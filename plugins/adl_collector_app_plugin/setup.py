@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 PROJECT_DIR = os.path.dirname(__file__)
 REQUIREMENTS_DIR = os.path.join(PROJECT_DIR, "requirements")
-VERSION = "0.0.1"
+VERSION = "0.1.0"
 
 
 def get_requirements(env):
@@ -22,11 +22,11 @@ install_requires = get_requirements("base")
 setup(
     name="adl-collector-app-plugin",
     version=VERSION,
-    url="TODO",
-    author="TODO",
-    author_email="TODO",
+    url="https://github.com/wmo-raf/adl-collector-app-plugin.git",
+    author="WMO RAF",
+    author_email="eotenyo@wmo.int",
     license="TODO",
-    description="TODO",
+    description="ADL plugin for manual mobile collector app",
     long_description="TODO",
     platforms=["linux"],
     package_dir={"": "src"},
