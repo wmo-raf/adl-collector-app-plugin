@@ -1,0 +1,15 @@
+{
+  "idempotency_key": "c6c9e1a0-5f34-47f3-9d77-9f4b0f13bde1",
+  "submission_time": "2025-09-11T09:21:00Z",
+  "observation_time": "2025-09-11T09:20:00Z",
+  "station_link_id": 11,
+  "records": [
+    {
+      "variable_mapping_id": 1,
+      "value": 25
+    }
+  ],
+  "meta": {
+    "app_version": "1.0.3"
+  }
+}
