@@ -12,7 +12,13 @@ from .utils import compute_submission_hash
 @api_view(['GET'])
 def get_observer_station_links(request):
     user = request.user
-    station_links = ManualObservationStationLink.objects.filter(observers__user=user)
+    
+    # Only return station links where the user is an enabled observer
+    station_links = ManualObservationStationLink.objects.filter(
+        enabled=True,
+        observers__user=user,
+        observers__enabled=True).distinct()
+    
     data = ObserverStationLinkListSerializer(station_links, many=True).data
     return Response(data)
 
