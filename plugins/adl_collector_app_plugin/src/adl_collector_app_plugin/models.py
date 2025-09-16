@@ -7,8 +7,11 @@ from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 from wagtail.admin.panels import InlinePanel, FieldPanel
+from wagtail.fields import StreamField
 from wagtail.models import Orderable
 from wagtail.snippets.models import register_snippet
+
+from adl_collector_app_plugin.blocks import FixedSlotLocalScheduleMode, WindowedOnlyScheduleMode
 
 
 class ManualObservationConnection(NetworkConnection):
@@ -29,9 +32,22 @@ class ManualObservationStationLink(StationLink):
     Model representing a link to a station for manual observations.
     """
     
+    schedule = StreamField(
+        block_types=[
+            ('fixed_local', FixedSlotLocalScheduleMode(label=_("Fixed Slots in Local Time"))),
+            ('windowed_only', WindowedOnlyScheduleMode(label=_("Windowed Only"))),
+        ],
+        min_num=1,
+        max_num=1,
+        null=True,
+        blank=True,
+        verbose_name=_("Schedule"),
+    )
+    
     panels = StationLink.panels + [
         InlinePanel("variable_mappings", label=_("Variable Mappings")),
         InlinePanel("observers", heading=_("Observers"), label=_("Observer")),
+        FieldPanel("schedule"),
     ]
     
     class Meta:
@@ -52,6 +68,7 @@ class ManualObservationStationLinkVariableMapping(Orderable):
     station_link = ParentalKey(ManualObservationStationLink, on_delete=models.CASCADE, related_name="variable_mappings")
     adl_parameter = models.ForeignKey(DataParameter, on_delete=models.CASCADE, verbose_name=_("ADL Parameter"))
     obs_parameter_unit = models.ForeignKey(Unit, on_delete=models.CASCADE, verbose_name=_("Observation Parameter Unit"))
+    is_rainfall = models.BooleanField(verbose_name=_("Is Rainfall"), default=False)
     
     class Meta:
         verbose_name = _("Manual Observation Variable Mapping")

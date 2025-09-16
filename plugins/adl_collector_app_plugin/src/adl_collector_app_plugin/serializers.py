@@ -1,5 +1,6 @@
 import re
 from datetime import timezone
+from zoneinfo import ZoneInfo
 
 from adl.api.serializers import ReadOnlyModelSerializer
 from adl.core.models import DataParameter
@@ -36,16 +37,44 @@ class ManualObservationStationLinkVariableMappingSerializer(ReadOnlyModelSeriali
     
     class Meta:
         model = ManualObservationStationLinkVariableMapping
-        fields = ("id", "adl_parameter_name", "obs_parameter_unit")
+        fields = ("id", "adl_parameter_name", "obs_parameter_unit", "is_rainfall",)
 
 
 class ObserverStationLinkDetailSerializer(ReadOnlyModelSerializer):
     name = serializers.CharField(source="station.name")
     variable_mappings = ManualObservationStationLinkVariableMappingSerializer(many=True)
+    schedule = serializers.SerializerMethodField()
+    timezone = serializers.SerializerMethodField()
     
     class Meta:
         model = ManualObservationStationLink
-        fields = ("id", "name", "variable_mappings")
+        fields = ("id", "name", "timezone", "variable_mappings", "schedule",)
+    
+    def get_timezone(self, obj):
+        # assuming obj.timezone is a ZoneInfo instance
+        if isinstance(obj.timezone, ZoneInfo):
+            return obj.timezone.key
+        return None
+    
+    def get_schedule(self, obj):
+        sv = obj.schedule
+        if not sv or len(sv) == 0:
+            return None
+        
+        # you constrained min_num=max_num=1, so take the first block
+        child = sv[0]  # StreamChild
+        block = child.block
+        
+        # Prefer API representation if the block defines it; otherwise fall back to prep value
+        if hasattr(block, "get_api_representation"):
+            config = block.get_api_representation(child.value)
+        else:
+            config = block.get_prep_value(child.value)
+        
+        return {
+            "mode": child.block_type,  # "fixed_local" | "windowed_only"
+            "config": config,  # JSON-serializable
+        }
 
 
 class SubmissionRecordInSer(serializers.Serializer):
