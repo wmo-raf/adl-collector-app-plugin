@@ -64,7 +64,13 @@ class SubmitManualObservation(APIView):
         
         if existing:
             return Response(
-                {"status": "ok", "idempotent": True, "submission_id": existing.pk},
+                {
+                    "station_link_id": sl.id,
+                    "status": "accepted",
+                    "idempotent": True,
+                    "id": existing.pk,
+                    "observation_time": existing.observation_time
+                },
                 status=status.HTTP_200_OK,
             )
         
@@ -72,6 +78,12 @@ class SubmitManualObservation(APIView):
             sub = ser.save()  # creates CollectorSubmission + N CollectorSubmissionRecord
         
         return Response(
-            {"status": "ok", "submission_id": sub.pk},
+            {
+                "station_link_id": sl.id,
+                "status": "accepted",
+                "idempotent": False,
+                "id": sub.pk,
+                "observation_time": sub.observation_time
+            },
             status=status.HTTP_201_CREATED,
         )
