@@ -139,8 +139,8 @@ class SubmissionInSer(serializers.Serializer):
         obs_time = data["observation_time"]
         submission_time = data["submission_time"]
         
-        if obs_time > dj_timezone.now():
-            raise serializers.ValidationError("observation_time cannot be in the future.")
+        # if obs_time > dj_timezone.now():
+        #     raise serializers.ValidationError("observation_time cannot be in the future.")
         
         if submission_time > dj_timezone.now():
             raise serializers.ValidationError("submission_time cannot be in the future.")
