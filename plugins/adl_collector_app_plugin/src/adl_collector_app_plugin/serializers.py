@@ -34,10 +34,26 @@ class DataParameterSerializer(ReadOnlyModelSerializer):
 class ManualObservationStationLinkVariableMappingSerializer(ReadOnlyModelSerializer):
     obs_parameter_unit = serializers.CharField(source="obs_parameter_unit.name")
     adl_parameter_name = serializers.CharField(source="adl_parameter.name")
+    range_check = serializers.SerializerMethodField()
     
     class Meta:
         model = ManualObservationStationLinkVariableMapping
-        fields = ("id", "adl_parameter_name", "obs_parameter_unit", "is_rainfall",)
+        fields = ("id", "adl_parameter_name", "obs_parameter_unit", "is_rainfall", "range_check",)
+    
+    def get_range_check(self, obj):
+        if not obj.qc_checks:
+            return None
+        
+        for block in obj.qc_checks:
+            if block.block_type == "range_check":
+                block_value = block.value
+                return {
+                    "min": block_value.get("min_value"),
+                    "max": block_value.get("max_value"),
+                    "inclusive": block_value.get("inclusive_bounds", True),
+                }
+        
+        return None
 
 
 class ObserverStationLinkDetailSerializer(ReadOnlyModelSerializer):

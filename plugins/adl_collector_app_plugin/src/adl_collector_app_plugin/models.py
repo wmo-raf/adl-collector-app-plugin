@@ -1,3 +1,4 @@
+from adl.core.blocks import QCChecksStreamBlock
 from adl.core.models import NetworkConnection, StationLink, DataParameter, Unit
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -69,6 +70,21 @@ class ManualObservationStationLinkVariableMapping(Orderable):
     adl_parameter = models.ForeignKey(DataParameter, on_delete=models.CASCADE, verbose_name=_("ADL Parameter"))
     obs_parameter_unit = models.ForeignKey(Unit, on_delete=models.CASCADE, verbose_name=_("Observation Parameter Unit"))
     is_rainfall = models.BooleanField(verbose_name=_("Is Rainfall"), default=False)
+    
+    qc_checks = StreamField(
+        QCChecksStreamBlock(),
+        null=True,
+        blank=True,
+        verbose_name=_("Quality Control Checks"),
+        help_text=_("Configure automatic data quality validation rules for this parameter.")
+    )
+    
+    panels = [
+        FieldPanel("adl_parameter"),
+        FieldPanel("obs_parameter_unit"),
+        FieldPanel("is_rainfall"),
+        FieldPanel("qc_checks"),
+    ]
     
     class Meta:
         verbose_name = _("Manual Observation Variable Mapping")
