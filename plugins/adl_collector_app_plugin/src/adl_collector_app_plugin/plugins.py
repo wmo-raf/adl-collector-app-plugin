@@ -89,7 +89,7 @@ class ADLCollectorPlugin(Plugin):
         if end_date is not None:
             time_q &= Q(submission__observation_time__lt=end_date)
         
-        # Pull unprocessed rows for this link
+        # Pull unprocessed and not-testing rows for this link
         qs = (
             CollectorSubmissionRecord.objects
             .select_related(
@@ -100,6 +100,7 @@ class ADLCollectorPlugin(Plugin):
             )
             .filter(
                 submission__station_link=station_link,
+                submission__is_test_submission=False,
                 is_processed=False,
             )
             .filter(time_q)

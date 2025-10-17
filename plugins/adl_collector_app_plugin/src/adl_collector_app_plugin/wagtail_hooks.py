@@ -1,6 +1,9 @@
 from django.conf import settings
+from django.urls import path
 from wagtail import hooks
 from wagtail.admin.viewsets.chooser import ChooserViewSet
+
+from .views import view_test_collector_submissions
 
 
 class UserChooserViewSet(ChooserViewSet):
@@ -16,4 +19,15 @@ class UserChooserViewSet(ChooserViewSet):
 def register_viewsets():
     return [
         UserChooserViewSet("user_chooser"),
+    ]
+
+
+@hooks.register('register_admin_urls')
+def urlconf_adl_collector_app_plugin():
+    return [
+        path(
+            "adl-collector-app-plugin/test-collector-submissions/",
+            view_test_collector_submissions,
+            name="view_test_collector_submissions",
+        ),
     ]

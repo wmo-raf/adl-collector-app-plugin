@@ -1,0 +1,55 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags static %}
+
+{% block main_content %}
+    {% if submissions %}
+        {% for s in submissions %}
+            <div class="panel panel--nested w-mb-4">
+                <div class="panel__header">
+                    <h3 class="w-m-0">
+                        <strong>#{{ s.id }}</strong>
+                        <span class="muted">
+                — {{ s.station_link }}
+                &middot;
+                {{ s.observer.user.get_full_name|default:s.observer.user.username }}
+              </span>
+                    </h3>
+                </div>
+
+                <div class="panel__content">
+                    <p class="help-block w-mb-2">
+                        <strong>Observation:</strong> {{ s.observation_time|date:"Y-m-d H:i" }} UTC &nbsp;|
+                        <strong>Submitted:</strong> {{ s.submission_time|date:"Y-m-d H:i" }} UTC &nbsp;|
+                        <strong>Created:</strong> {{ s.created_at|date:"Y-m-d H:i" }} UTC
+                    </p>
+
+                    {% if s.records.all %}
+                        <table class="listing small">
+                            <thead>
+                            <tr>
+                                <th>{% trans "Parameter" %}</th>
+                                <th class="w-text-right">{% trans "Value" %}</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for r in s.records.all %}
+                                <tr class="{% cycle 'odd' 'even' %}">
+                                    <td>{{ r.variable_mapping }}</td>
+                                    <td class="w-text-right">
+                                        <code>{{ r.value }}</code>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="help-block">
+                            <em>{% trans "No records attached to this submission." %}</em>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+    {% endif %}
+{% endblock %}

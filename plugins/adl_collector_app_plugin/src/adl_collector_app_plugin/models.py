@@ -1,8 +1,10 @@
 from adl.core.blocks import QCChecksStreamBlock
 from adl.core.models import NetworkConnection, StationLink, DataParameter, Unit
+from adl_collector_app_plugin.blocks import FixedSlotLocalScheduleMode, WindowedOnlyScheduleMode
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -11,8 +13,6 @@ from wagtail.admin.panels import InlinePanel, FieldPanel
 from wagtail.fields import StreamField
 from wagtail.models import Orderable
 from wagtail.snippets.models import register_snippet
-
-from adl_collector_app_plugin.blocks import FixedSlotLocalScheduleMode, WindowedOnlyScheduleMode
 
 
 class ManualObservationConnection(NetworkConnection):
@@ -26,6 +26,18 @@ class ManualObservationConnection(NetworkConnection):
     class Meta:
         verbose_name = _("Manual Observation Connection")
         verbose_name_plural = _("Manual Observation Connections")
+    
+    def get_extra_model_admin_links(self):
+        columns = [
+            {
+                "label": _("View Test Collector Submissions"),
+                "url": reverse("view_test_collector_submissions"),
+                "icon_name": "list-ul",
+                "kwargs": {"attrs": {"target": "_blank"}}
+            }
+        ]
+        
+        return columns
 
 
 class ManualObservationStationLink(StationLink):
@@ -151,6 +163,7 @@ class CollectorSubmission(ClusterableModel):
     created_at = models.DateTimeField(auto_now_add=True)
     submission_time = models.DateTimeField()
     observation_time = models.DateTimeField()
+    is_test_submission = models.BooleanField(default=False)
     
     # What
     data = models.JSONField()

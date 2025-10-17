@@ -132,6 +132,7 @@ class SubmissionInSer(serializers.Serializer):
     observation_time = AwareDateTimeField()
     station_link_id = serializers.IntegerField()
     records = SubmissionRecordInSer(many=True)
+    is_test_submission = serializers.BooleanField(required=False, default=False)
     meta = serializers.DictField(required=False)
     
     def validate(self, data):
@@ -196,6 +197,7 @@ class SubmissionInSer(serializers.Serializer):
             observer=observer,
             submission_time=validated["submission_time"],  # stored UTC
             observation_time=validated["observation_time"],  # stored UTC
+            is_test_submission=validated["is_test_submission"],
             data=payload,  # raw payload snapshot
             idempotency_key=validated.get("idempotency_key", ""),
             content_hash=chash,
