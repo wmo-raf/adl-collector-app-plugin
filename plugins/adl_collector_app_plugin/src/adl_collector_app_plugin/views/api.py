@@ -1,21 +1,22 @@
 from django.db import transaction
-from django.db.models import Prefetch
-from django.shortcuts import render
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import ManualObservationStationLink, CollectorSubmission, CollectorSubmissionRecord
-from .serializers import ObserverStationLinkListSerializer, ObserverStationLinkDetailSerializer, SubmissionInSer
-from .utils import compute_submission_hash
+from ..models import ManualObservationStationLink, CollectorSubmission
+from ..serializers import (
+    ObserverStationLinkListSerializer,
+    ObserverStationLinkDetailSerializer,
+    SubmissionInSer,
+)
+from ..utils import compute_submission_hash
 
 
 @api_view(['GET'])
 def get_observer_station_links(request):
     user = request.user
     
-    # Only return station links where the user is an enabled observer
     station_links = ManualObservationStationLink.objects.filter(
         enabled=True,
         observers__user=user,
@@ -37,7 +38,7 @@ def get_station_link(request, station_link_id):
 
 
 class SubmitManualObservation(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # add your scope checker if needed
+    permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request):
         serialized = SubmissionInSer(data=request.data, context={"request": request})
@@ -47,9 +48,7 @@ class SubmitManualObservation(APIView):
         obs_time = serialized.validated_data["observation_time"]
         meta = serialized.validated_data.get("meta") or {}
         records = serialized.validated_data["records"]
-        idem_key = serialized.validated_data.get("idempotency_key", "")
         
-        # Deterministic content hash for idempotency
         chash = compute_submission_hash(
             station_link_id=station_link.id,
             observation_time=obs_time,
@@ -57,7 +56,6 @@ class SubmitManualObservation(APIView):
             meta=meta,
         )
         
-        # Short-circuit if same payload was already stored
         existing = CollectorSubmission.objects.filter(
             observer=serialized.validated_data["_observer"],
             observation_time=obs_time,
@@ -78,7 +76,7 @@ class SubmitManualObservation(APIView):
             )
         
         with transaction.atomic():
-            submission = serialized.save()  # creates CollectorSubmission + N CollectorSubmissionRecord
+            submission = serialized.save()
         
         return Response(
             {
@@ -91,29 +89,3 @@ class SubmitManualObservation(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
-
-def view_test_collector_submissions(request):
-    submissions = (
-        CollectorSubmission.objects
-        .filter(is_test_submission=True)
-        .select_related("observer__user", "station_link")
-        .prefetch_related(
-            Prefetch(
-                "records",
-                queryset=CollectorSubmissionRecord.objects.select_related("variable_mapping"),
-            )
-        )
-        .order_by("-created_at")[:100]
-    )
-    
-    context = {
-        "submissions": submissions,
-        "page_title": "Test Collector Submissions",
-    }
-    
-    return render(
-        request,
-        "adl_collector_app_plugin/test_submissions.html",
-        context
-    )

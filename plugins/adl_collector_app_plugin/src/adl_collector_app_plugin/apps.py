@@ -8,5 +8,7 @@ class PluginNameConfig(AppConfig):
     
     def ready(self):
         from .plugins import ADLCollectorPlugin
-        
+
         plugin_registry.register(ADLCollectorPlugin())
+
+        import adl_collector_app_plugin.signals  # noqa: F401 — registers signal handlers

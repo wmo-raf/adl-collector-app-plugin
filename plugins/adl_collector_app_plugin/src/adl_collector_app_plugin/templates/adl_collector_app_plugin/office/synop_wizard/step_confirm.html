@@ -1,0 +1,92 @@
+{% extends "adl_collector_app_plugin/office/synop_wizard/layout.html" %}
+{% load i18n %}
+
+{% block wizard_content %}
+    <h2 class="w-h2 wizard-step-title">{% trans "Review & Confirm" %}</h2>
+    <p class="help-block wizard-intro">
+        {% trans "Review the mappings below. Clicking Save will:" %}
+    </p>
+    <ul class="help-block wizard-intro-list">
+        <li>{% trans "Create any new global FM12 → DataParameter mappings (system-wide, reused by all connections)." %}</li>
+        <li>
+            {% blocktrans with n=station_count %}
+                Create station variable mappings on {{ n }} station(s) linked to this connection (station-level, used
+                for ingestion).
+            {% endblocktrans %}
+            {% trans "Existing mappings for the same DataParameter will not be overwritten." %}
+        </li>
+    </ul>
+
+    {% if enriched_mappings %}
+        <div class="overflow-table--mb">
+            <table class="confirm-table">
+                <thead>
+                <tr>
+                    <th>{% trans "FM12 Path" %}</th>
+                    <th>{% trans "ADL DataParameter" %}</th>
+                    <th>{% trans "Source Unit" %}</th>
+                    <th>{% trans "Show in Direct Entry" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for m in enriched_mappings %}
+                    <tr>
+                        <td>
+                            <code class="code-sm">{{ m.path }}</code><br>
+                            <span class="confirm-path-label">{{ m.label }}</span>
+                        </td>
+                        <td>{{ m.adl_parameter_name }}</td>
+                        <td><code>{{ m.unit_name }}</code></td>
+                        <td>
+                            {% if m.show_in_direct_entry %}
+                                <span class="text-direct-yes">✓ {% trans "Yes" %}</span>
+                            {% else %}
+                                <span class="text-direct-no">— {% trans "No (SYNOP only)" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if stations %}
+            <div class="w-box w-mb-4">
+                <strong>{% trans "Stations that will receive variable mappings:" %}</strong>
+                <ul class="wizard-station-list">
+                    {% for sl in stations %}
+                        <li>{{ sl.station.name }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="step" value="4">
+            <div class="wizard-action-bar">
+                <a href="{% url 'synop_setup_wizard' %}?step=2" class="button bicolor button--icon button-secondary">
+                    <span class="icon-wrapper">
+                        <svg class="icon arrow-left icon" aria-hidden="true"><use href="#icon-arrow-left"></use>
+                        </svg>
+                    </span>
+                    {% trans "Back" %}
+                </a>
+                <button class="button bicolor button--icon" type="submit">
+                    <span class="icon-wrapper">
+                        <svg class="icon icon-plus icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+                    </span>
+                    {% trans "Save Mappings" %}
+                </button>
+            </div>
+        </form>
+
+    {% else %}
+        <div class="w-field__errors w-mb-4">
+            <div class="help-block help-critical">
+                {% trans "No mappings to save. Go back and select at least one parameter." %}
+            </div>
+        </div>
+        <a href="{% url 'synop_setup_wizard' %}?step=2" class="button">← {% trans "Back" %}</a>
+    {% endif %}
+{% endblock %}

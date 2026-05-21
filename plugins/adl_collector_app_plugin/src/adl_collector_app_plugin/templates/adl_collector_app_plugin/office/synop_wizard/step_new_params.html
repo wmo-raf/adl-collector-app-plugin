@@ -1,0 +1,133 @@
+{% extends "adl_collector_app_plugin/office/synop_wizard/layout.html" %}
+{% load i18n %}
+
+{% block wizard_content %}
+    <h2 class="w-h2 wizard-step-title">{% trans "Create New DataParameters" %}</h2>
+    <p class="help-block wizard-intro">
+        {% trans "Fill in the details for each new ADL DataParameter. Parameters that already exist with the same name will be reused." %}
+    </p>
+
+    {% if errors %}
+        <div class="w-field__errors w-mb-4">
+            {% for e in errors %}
+                <div class="help-block help-critical">
+                    <svg class="icon icon-warning" aria-hidden="true">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    {{ e }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="step" value="3">
+
+        {% for m in new_mappings %}
+            <div class="w-box wizard-param-box">
+                <div class="wizard-param-header">
+                    <strong>{{ m.label }}</strong>
+                    <code class="code-sm--ml">{{ m.path }}</code>
+                    {% if m.is_coded %}
+                        <span class="badge-coded">
+                            {% trans "coded" %}{% if m.wmo_code_table %} ({{ m.wmo_code_table }}){% endif %}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="wizard-param-grid">
+
+                    <div>
+                        <label class="w-field__label">
+                            {% trans "Parameter Name" %} <span class="required">*</span>
+                        </label>
+                        <input type="text"
+                               name="new_name_{{ m.field_key }}"
+                               value="{{ m.label }}"
+                               class="w-field__input wizard-full-input"
+                               required
+                               placeholder="e.g. air_temperature">
+                        <p class="help-block wizard-help">
+                            {% trans "Use the existing ADL parameter name if it already exists (will be reused, not duplicated)." %}
+                        </p>
+                    </div>
+
+                    {% if not m.is_coded %}
+                        <div>
+                            <label class="w-field__label">
+                                {% trans "Unit Symbol" %} <span class="required">*</span>
+                            </label>
+                            <input type="text"
+                                   name="new_unit_symbol_{{ m.field_key }}"
+                                   value="{{ m.suggested_unit_symbol }}"
+                                   class="w-field__input wizard-full-input"
+                                   placeholder="e.g. degC, hPa, m/s"
+                                   list="unit-datalist_{{ m.field_key }}">
+                            <datalist id="unit-datalist_{{ m.field_key }}">
+                                {% for u in all_units %}
+                                    <option value="{{ u.symbol }}">{{ u.name }}</option>
+                                {% endfor %}
+                            </datalist>
+                            <p class="help-block wizard-help">
+                                {% trans "Must be a pint-recognised symbol. The Unit will be created if it doesn't exist." %}
+                            </p>
+                        </div>
+                    {% else %}
+                        <div>
+                            <p class="help-block wizard-help--pt">
+                                {% trans "Coded parameters use a dimensionless unit (no conversion)." %}
+                            </p>
+                        </div>
+                    {% endif %}
+
+                    <div>
+                        <label class="w-field__label">{% trans "Category" %}</label>
+                        <select name="new_category_{{ m.field_key }}" class="w-field__input wizard-full-input">
+                            {% for val, display in category_choices %}
+                                <option value="{{ val }}"
+                                        {% if val == m.adl_category %}selected{% endif %}>
+                                    {{ display }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="w-field__label">{% trans "Options" %}</label>
+                        <label class="wizard-checkbox-label">
+                            <input type="checkbox"
+                                   name="new_is_coded_{{ m.field_key }}"
+                                   {% if m.is_coded %}checked{% endif %}>
+                            {% trans "Is coded (WMO lookup table)" %}
+                        </label>
+                        {% if m.is_coded %}
+                            <label class="wizard-checkbox-label">
+                                <span class="direct-entry-hint">{% trans "WMO code table:" %}</span>
+                                <input type="text"
+                                       name="new_wmo_code_table_{{ m.field_key }}"
+                                       value="{{ m.wmo_code_table }}"
+                                       class="w-field__input wizard-code-input"
+                                       placeholder="e.g. 2700">
+                            </label>
+                        {% endif %}
+                        <label class="wizard-checkbox-label--mt">
+                            <input type="checkbox"
+                                   name="show_direct_{{ m.field_key }}"
+                                   {% if not m.is_coded %}checked{% endif %}>
+                            {% trans "Show in direct-entry forms" %}
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+            {% empty %}
+            <p>{% trans "No new parameters to create." %}</p>
+        {% endfor %}
+
+        <div class="wizard-action-bar">
+            <a href="{% url 'synop_setup_wizard' %}?step=2" class="button">← {% trans "Back" %}</a>
+            <button type="submit" class="button button-primary">{% trans "Next: Review & Confirm →" %}</button>
+        </div>
+    </form>
+{% endblock %}

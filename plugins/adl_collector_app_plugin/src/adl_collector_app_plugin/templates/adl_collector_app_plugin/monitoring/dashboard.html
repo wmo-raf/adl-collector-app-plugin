@@ -1,0 +1,259 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags static %}
+
+{% block main_content %}
+    <style>
+        .code-raw {
+            font-size: 0.75em;
+            word-break: break-all;
+        }
+    </style>
+
+    <div class="w-mb-6">
+        <div class="w-mb-4">
+            {% trans "Period:" %}
+            {% for d in period_choices %}
+                <a href="?days={{ d }}"
+                   class="button button-small {% if d == period_days %}button-primary{% endif %}">
+                    {% blocktrans with d=d %}Last {{ d }} days{% endblocktrans %}
+                </a>
+            {% endfor %}
+
+            <a href="{% url 'collector_office_entry' %}" class="button button-small button--icon w-ml-4">
+                <svg class="icon icon-edit w-mr-1" aria-hidden="true">
+                    <use href="#icon-edit"></use>
+                </svg>
+                {% trans "Office Entry" %}
+            </a>
+            <a href="{% url 'collector_office_synop' %}" class="button button-small button--icon">
+                <svg class="icon icon-doc-full w-mr-1" aria-hidden="true">
+                    <use href="#icon-doc-full"></use>
+                </svg>
+                {% trans "SYNOP Entry" %}
+            </a>
+        </div>
+
+        {% if unprocessed_count %}
+            <div class="w-field__errors w-mb-4">
+                <p class="error-message">
+                    {% blocktrans with n=unprocessed_count %}
+                        Warning: {{ n }} submission record(s) are unprocessed. Check the Celery worker.
+                    {% endblocktrans %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Station status table -->
+    <div class="panel panel--nested w-mb-6">
+        <div class="panel__header">
+            <h3 class="w-m-0">{% trans "Station Submission Status" %}</h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing">
+                <thead>
+                <tr>
+                    <th>{% trans "Station" %}</th>
+                    <th>{% trans "Connection" %}</th>
+                    <th class="w-text-right">{% trans "Submissions" %}</th>
+                    <th>{% trans "Last Submission" %}</th>
+                    <th>{% trans "Status" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for sl in station_stats %}
+                    <tr>
+                        <td><strong>{{ sl.station.name }}</strong></td>
+                        <td class="muted">{{ sl.network_connection.name }}</td>
+                        <td class="w-text-right">
+                            <strong>{{ sl.submission_count }}</strong>
+                        </td>
+                        <td>
+                            {% if sl.last_submission %}
+                                {{ sl.last_submission|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.submission_count == 0 %}
+                                <span class="status-tag status-tag--critical">{% trans "No data" %}</span>
+                                {% elif sl.submission_count < 3 %}
+                                <span class="status-tag status-tag--warning">{% trans "Low" %}</span>
+                            {% else %}
+                                <span class="status-tag status-tag--primary">{% trans "OK" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <em class="muted">{% trans "No station links configured." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Observer activity -->
+    <div class="panel panel--nested w-mb-6">
+        <div class="panel__header">
+            <h3 class="w-m-0">{% trans "Observer Activity" %}</h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing">
+                <thead>
+                <tr>
+                    <th>{% trans "Observer" %}</th>
+                    <th>{% trans "Station" %}</th>
+                    <th class="w-text-right">{% trans "Submissions" %}</th>
+                    <th>{% trans "Last Seen" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for obs in observer_activity %}
+                    <tr>
+                        <td>{{ obs.user.get_full_name|default:obs.user.username }}</td>
+                        <td class="muted">{{ obs.station_link.station.name }}</td>
+                        <td class="w-text-right">{{ obs.submission_count }}</td>
+                        <td>
+                            {% if obs.last_seen %}
+                                {{ obs.last_seen|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <em class="muted">{% trans "No observer activity in this period." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent submissions feed -->
+    <div class="panel panel--nested w-mb-6">
+        <div class="panel__header">
+            <h3 class="w-m-0">{% trans "Recent Submissions" %}</h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing small">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans "Station" %}</th>
+                    <th>{% trans "Observer / Staff" %}</th>
+                    <th>{% trans "Observation Time" %}</th>
+                    <th>{% trans "Submitted At" %}</th>
+                    <th>{% trans "Source" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for sub in recent_submissions %}
+                    <tr>
+                        <td>{{ sub.id }}</td>
+                        <td>{{ sub.station_link.station.name }}</td>
+                        <td>
+                            {% if sub.observer %}
+                                {{ sub.observer.user.get_full_name|default:sub.observer.user.username }}
+                            {% elif sub.office_submitted_by %}
+                                {{ sub.office_submitted_by.get_full_name|default:sub.office_submitted_by.username }}
+                                <span class="muted">({% trans "office" %})</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ sub.observation_time|date:"Y-m-d H:i" }} UTC</td>
+                        <td>{{ sub.created_at|date:"Y-m-d H:i" }} UTC</td>
+                        <td>
+                            {% if sub.synop_source %}
+                                <span class="status-tag">SYNOP</span>
+                            {% elif sub.office_submitted_by %}
+                                <span class="status-tag status-tag--secondary">{% trans "Office" %}</span>
+                            {% else %}
+                                <span class="status-tag status-tag--primary">{% trans "Mobile" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <em class="muted">{% trans "No submissions in this period." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SYNOP archive -->
+    <div class="panel panel--nested w-mb-6">
+        <div class="panel__header">
+            <h3 class="w-m-0">{% trans "SYNOP Message Archive" %}</h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing small">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans "Station" %}</th>
+                    <th>{% trans "Submitted By" %}</th>
+                    <th>{% trans "Obs Time" %}</th>
+                    <th>{% trans "Received" %}</th>
+                    <th>{% trans "Ingested" %}</th>
+                    <th>{% trans "Raw Message" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for msg in synop_messages %}
+                    <tr>
+                        <td>{{ msg.id }}</td>
+                        <td>{{ msg.station_link.station.name }}</td>
+                        <td>
+                            {% if msg.submitted_by %}
+                                {{ msg.submitted_by.get_full_name|default:msg.submitted_by.username }}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if msg.observation_time %}
+                                {{ msg.observation_time|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ msg.received_at|date:"Y-m-d H:i" }} UTC</td>
+                        <td>
+                            {% if msg.submission %}
+                                <span class="status-tag status-tag--primary">
+                                #{{ msg.submission.id }}
+                            </span>
+                            {% else %}
+                                <span class="status-tag status-tag--critical">{% trans "No" %}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code class="code-raw">
+                                {{ msg.raw_message|truncatechars:80 }}
+                            </code>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <em class="muted">{% trans "No SYNOP messages in this period." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

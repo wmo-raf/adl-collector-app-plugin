@@ -16,3 +16,15 @@ set -euo pipefail
 
 # Instead this file is ideal for any other installation custom steps here required by
 # your plugin. For example installing a postgres extension used by your plugin.
+
+# Build the Vue 3 field observer PWA
+PLUGIN_SRC_DIR="$(dirname "$0")/src/adl_collector_app_plugin"
+PWA_DIR="${PLUGIN_SRC_DIR}/vue-pwa"
+
+if [ -d "${PWA_DIR}" ]; then
+  echo "Building field observer PWA..."
+  cd "${PWA_DIR}"
+  npm install
+  npm run build
+  echo "PWA build complete."
+fi

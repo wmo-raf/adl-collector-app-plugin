@@ -1,0 +1,291 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .co-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .co-card-grid .help-block {
+            padding-left: 0;
+        }
+
+        .co-card {
+            display: block;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+            text-decoration: none;
+        }
+
+        .co-card--disabled {
+            display: block;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+            box-shadow: none;
+            opacity: 0.55;
+            cursor: default;
+            user-select: none;
+        }
+
+        .co-card-icon {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .co-card-hint {
+            margin-top: .5rem;
+            font-size: .8rem;
+        }
+
+        .co-card-desc {
+            margin-top: .25rem;
+        }
+
+        .co-section-desc {
+            margin-bottom: .75rem;
+        }
+
+        .co-section {
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .co-section-title {
+            margin-bottom: .75rem;
+        }
+
+        .co-hour-labels {
+            display: flex;
+            gap: 2px;
+            margin-bottom: .25rem;
+            margin-left: 200px;
+        }
+
+        .co-hour-label {
+            width: 22px;
+            text-align: center;
+            font-size: .65rem;
+            color: #6c757d;
+        }
+
+        .co-station-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1rem;
+        }
+
+        .co-station-name {
+            min-width: 190px;
+            max-width: 190px;
+            font-weight: 500;
+            text-decoration: none;
+            color: inherit;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .co-hour-slots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .co-hour-slot {
+            width: 22px;
+            height: 18px;
+            border-radius: 3px;
+        }
+
+        .co-hour-slot--active {
+            background: #28a745;
+        }
+
+        .co-hour-slot--empty {
+            background: #e9ecef;
+        }
+
+        .co-info-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .co-info-card {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .co-info-card-title {
+            font-size: .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #6c757d;
+            margin: 0 0 .4rem;
+        }
+
+        .co-info-card-stat {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #1a1a2e;
+            margin-bottom: .75rem;
+        }
+
+        .co-info-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+    </style>
+
+
+    <div class="co-card-grid">
+
+        {# --- Monitoring --- #}
+        <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}" class="co-card card">
+            <span class="icon icon-site co-card-icon"></span>
+            <strong>{% trans "Monitoring" %}</strong>
+            <p class="help-block co-card-desc">{% trans "Submission stats, observer activity, SYNOP archive." %}</p>
+        </a>
+
+        {# --- Office Data Entry --- #}
+        {% if connection.enable_office_entry %}
+            <a href="{% url 'collector_office_entry' %}?connection={{ connection.pk }}" class="co-card card">
+                <span class="icon icon-edit co-card-icon"></span>
+                <strong>{% trans "Office Data Entry" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Enter parameter values directly from the office." %}</p>
+            </a>
+        {% else %}
+            <div class="co-card--disabled card"
+                 title="{% trans 'Enable Office Entry on this connection to use this feature.' %}">
+                <span class="icon icon-edit co-card-icon"></span>
+                <strong>{% trans "Office Data Entry" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Enter parameter values directly from the office." %}</p>
+                <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
+            </div>
+        {% endif %}
+
+        {# --- SYNOP FM12 Entry --- #}
+        {% if connection.enable_office_entry %}
+            <a href="{% url 'collector_office_synop' %}?connection={{ connection.pk }}" class="co-card card">
+                <span class="icon icon-doc-full co-card-icon"></span>
+                <strong>{% trans "SYNOP FM12 Entry" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Paste and archive a raw FM12 SYNOP message." %}</p>
+            </a>
+        {% else %}
+            <div class="co-card--disabled card"
+                 title="{% trans 'Enable Office Entry on this connection to use this feature.' %}">
+                <span class="icon icon-doc-full co-card-icon"></span>
+                <strong>{% trans "SYNOP FM12 Entry" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Paste and archive a raw FM12 SYNOP message." %}</p>
+                <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
+            </div>
+        {% endif %}
+
+        {# --- Field Observer App --- #}
+        {% if connection.enable_field_app %}
+            <a href="{% url 'collector_field_pwa' %}" target="_blank" class="co-card card">
+                <span class="icon icon-mobile-alt co-card-icon"></span>
+                <strong>{% trans "Field Observer App" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Open the PWA for field observers (installable)." %}</p>
+            </a>
+        {% else %}
+            <div class="co-card--disabled card"
+                 title="{% trans 'Enable Field Observer App on this connection to use this feature.' %}">
+                <span class="icon icon-mobile-alt co-card-icon"></span>
+                <strong>{% trans "Field Observer App" %}</strong>
+                <p class="help-block co-card-desc">{% trans "Open the PWA for field observers (installable)." %}</p>
+                <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
+            </div>
+        {% endif %}
+
+    </div>
+
+    {# --- Info cards: Stations + SYNOP Setup --- #}
+    <div class="co-section">
+        <div class="co-info-card-grid">
+
+            {# Stations card #}
+            <div class="co-info-card">
+                <p class="co-info-card-title">{% trans "Station Links" %}</p>
+                <div class="co-info-card-stat">{{ station_link_count }}</div>
+                <div class="co-info-card-actions">
+                    <a href="{{ station_links_url }}" class="button button-secondary button-small">
+                        {% trans "View All" %}
+                    </a>
+                    <a href="{{ station_links_add_url }}" class="button button-small bicolor button--icon">
+                        <span class="icon-wrapper">
+                            <svg class="icon icon-plus" aria-hidden="true"><use href="#icon-plus"></use></svg>
+                        </span>
+                        {% trans "Add New" %}
+                    </a>
+                </div>
+            </div>
+
+            {# SYNOP Setup card #}
+            <div class="co-info-card">
+                <p class="co-info-card-title">{% trans "SYNOP Parameters" %}</p>
+                <div class="co-info-card-stat">{{ synop_param_count }}</div>
+                <div class="co-info-card-actions">
+                    <a href="{% url 'synop_setup_wizard' %}?connection={{ connection.pk }}"
+                       class="button button-secondary button-small">
+                        {% trans "Setup Wizard" %}
+                    </a>
+                    <form method="post"
+                          action="{% url 'collector_sync_synop_mappings' connection.pk %}"
+                          style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="button button-small bicolor button--icon">
+                            <span class="icon-wrapper">
+                                <svg class="icon icon-cog icon" aria-hidden="true"><use href="#icon-cog"></use></svg>
+                            </span>
+                            {% trans "Sync Mappings" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {% if station_status %}
+        <div class="co-section">
+            <h2 class="w-h3 co-section-title">{% trans "Today's Collection Status" %} — {{ today }}</h2>
+            <div class="co-hour-labels">
+                {% for h in hour_labels %}
+                    <div class="co-hour-label">{{ h }}</div>
+                {% endfor %}
+            </div>
+
+            {% for item in station_status %}
+                <div class="co-station-row">
+                    <a href="{{ item.detail_url }}"
+                       class="co-station-name"
+                       title="{{ item.station_link.station.name }}">
+                        {{ item.station_link.station.name }}
+                    </a>
+                    <div class="co-hour-slots">
+                        {% for has_data in item.hours %}
+                            <div class="co-hour-slot {% if has_data %}co-hour-slot--active{% else %}co-hour-slot--empty{% endif %}"
+                                 title="{{ forloop.counter0 }}:00 UTC"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+
+{% endblock %}

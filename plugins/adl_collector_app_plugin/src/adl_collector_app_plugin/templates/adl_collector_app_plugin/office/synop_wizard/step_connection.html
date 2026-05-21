@@ -1,0 +1,72 @@
+{% extends "adl_collector_app_plugin/office/synop_wizard/layout.html" %}
+{% load i18n %}
+
+{% block wizard_content %}
+    <h2 class="w-h2 wizard-step-title">{% trans "Select a Connection" %}</h2>
+    <p class="help-block wizard-intro">
+        {% trans "Choose the Manual Observation Connection you want to set up station variable mappings for. Global FM12 →
+    DataParameter mappings will be created or reused during this wizard." %}
+    </p>
+
+    {% if saved %}
+        <div class="w-field__errors w-mb-4">
+            <p class="text-success">
+                {% trans "Mappings saved successfully. You can run the wizard again to add more parameters." %}
+            </p>
+        </div>
+    {% endif %}
+
+    {% if global_incomplete %}
+        <div class="help-block wizard-warning w-mb-4">
+            <svg class="icon icon-warning" aria-hidden="true">
+                <use href="#icon-warning"></use>
+            </svg>
+            {% blocktrans with n=global_incomplete %}
+                {{ n }} common FM12 parameter(s) do not yet have a global SYNOP mapping. The wizard will let you
+                configure them.
+            {% endblocktrans %}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="step" value="1">
+
+        <div class="connection-grid">
+            {% for item in conn_info %}
+                <label class="connection-label">
+                    <input type="radio" name="connection_id" value="{{ item.connection.pk }}" required
+                           class="visually-hidden-radio">
+                    <div class="w-box connection-card" data-pk="{{ item.connection.pk }}">
+                        <strong>{{ item.connection.name }}</strong>
+                    </div>
+                </label>
+                {% empty %}
+                <p>{% trans "No Manual Observation Connections found. Create one in the Wagtail admin first." %}</p>
+            {% endfor %}
+        </div>
+
+        {% if conn_info %}
+            <button type="submit" class="button button-primary">
+                {% trans "Next: Review Parameters →" %}
+            </button>
+        {% endif %}
+    </form>
+
+    <script>
+        document.querySelectorAll('.connection-card').forEach(function (card) {
+            card.parentElement.addEventListener('click', function () {
+                document.querySelectorAll('.connection-card').forEach(function (c) {
+                    c.style.borderColor = '#dee2e6';
+                });
+                card.style.borderColor = '#007d7e';
+            });
+            card.parentElement.querySelector('input[type=radio]').addEventListener('change', function () {
+                document.querySelectorAll('.connection-card').forEach(function (c) {
+                    c.style.borderColor = '#dee2e6';
+                });
+                card.style.borderColor = '#007d7e';
+            });
+        });
+    </script>
+{% endblock %}
