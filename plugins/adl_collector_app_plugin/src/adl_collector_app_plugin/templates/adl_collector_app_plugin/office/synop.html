@@ -1,0 +1,512 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags static %}
+
+{% block main_content %}
+    <style>
+        .synop-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+            margin-top: .75rem;
+        }
+
+        .synop-preview-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            padding: .5rem .75rem;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+        }
+
+        .synop-preview-table td {
+            padding: .5rem .75rem;
+            border-bottom: 1px solid #f0f1f2;
+        }
+
+        .synop-preview-table tr:hover td {
+            background: #fafbfc;
+        }
+
+        .badge-will-import {
+            color: #155724;
+            font-weight: 600;
+        }
+
+        .badge-skip {
+            color: #6c757d;
+        }
+
+        .station-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .station-card dt {
+            font-size: .78rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: .1rem;
+        }
+
+        .station-card dd {
+            font-weight: 600;
+            margin: 0;
+        }
+
+
+        details > summary {
+            cursor: pointer;
+            padding: .4rem;
+            color: #555;
+            font-size: .9rem;
+            display: list-item;
+            background: #f8f9fa;
+        }
+
+        details > summary:hover {
+            color: #333;
+        }
+
+        .synop-mapped-success {
+            background: #e8f5f5;
+            border: 1px solid #43b1b4;
+            border-left: 4px solid #007d7e;
+            border-radius: 4px;
+            padding: 1rem 1.25rem;
+            margin-top: 2rem;
+        }
+
+        /* Step 2 decode-preview header */
+        .synop-decode-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .synop-decode-header > .w-h1 {
+            margin: 0;
+        }
+
+        /* Save actions bar */
+        .synop-save-actions {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .synop-save-form {
+            display: inline;
+        }
+
+        /* Unmapped-elements details block */
+        .synop-details {
+            margin-top: 1.25rem;
+        }
+
+        .synop-details .synop-preview-table {
+            margin-top: .5rem;
+        }
+
+        /* Inline code in tables */
+        .code-sm {
+            font-size: .82rem;
+        }
+
+        /* Step 1 — editing / warning banners */
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: .75rem 1rem;
+        }
+
+        /* Step 1 — success message */
+        .text-success {
+            color: var(--w-color-positive-100);
+        }
+
+        /* No-mappings warning link */
+        .synop-wizard-link {
+            margin-left: .5rem;
+        }
+
+
+        /* Unmapped parameters warning notice */
+        .synop-unmapped-notice {
+            background: #fff8e1;
+            border: 1px solid #ffc107;
+            border-left: 4px solid #e6a817;
+            border-radius: 4px;
+            padding: 1rem 1.25rem;
+            margin-top: 2rem;
+        }
+
+        .synop-unmapped-header {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: .4rem;
+            color: #664d03;
+        }
+
+        .synop-unmapped-hint {
+            color: #555;
+            font-size: .9rem;
+            margin: .25rem 0 .75rem 0;
+        }
+
+        .synop-unmapped-actions {
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .synop-save-hidden {
+            display: none;
+        }
+
+        /* Step 2 — mapped-count heading */
+        .synop-count-heading {
+            margin-bottom: 1.5rem;
+        }
+
+        .help-with-action-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    {% if step == 2 %}
+        {# ======================= STEP 2 — DECODE PREVIEW ======================= #}
+
+        <div class="synop-decode-header">
+            <h1 class="w-h1">
+                {% trans "SYNOP Decode Preview" %}
+            </h1>
+            <a href="{% url 'collector_office_synop' %}"
+               class="button button-small bicolor button--icon button-secondary">
+                <span class="icon-wrapper">
+                    <svg class="icon icon-edit icon" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                </span>
+                {% trans "Edit message" %}
+            </a>
+        </div>
+
+        {% if station_error %}
+            <div class="w-field__errors w-mb-4">
+                <div class="help-block help-critical">
+                    <svg class="icon icon-warning" aria-hidden="true">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    {{ station_error }}
+                </div>
+            </div>
+        {% else %}
+            <div class="station-card">
+                <div>
+                    <dt>{% trans "Station" %}</dt>
+                    <dd>{{ station_link.station.name }}</dd>
+                </div>
+                <div>
+                    <dt>{% trans "Connection" %}</dt>
+                    <dd>{{ connection.name }}</dd>
+                </div>
+                {% if station_id %}
+                    <div>
+                        <dt>{% trans "SYNOP Station ID" %}</dt>
+                        <dd><code>{{ station_id }}</code></dd>
+                    </div>
+                {% endif %}
+                {% if observation_time %}
+                    <div>
+                        <dt>{% trans "Observation Time (UTC)" %}</dt>
+                        <dd>{{ observation_time|date:"Y-m-d H:i" }}Z</dd>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="synop-date-adjust w-mt-4"
+                 style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+                <span class="help-block" style="margin:0;">
+                    {% trans "Adjust year/month if incorrect:" %}
+                </span>
+                <form method="post" style="display:contents;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="decode">
+                    <input type="hidden" name="raw_message" value="{{ form.raw_message.value }}">
+                    <select name="observation_year" id="redecode-year"
+                            onchange="syncDateToSaveForm()" class="field__input" style="width:auto;">
+                        {% for val, label in form.fields.observation_year.choices %}
+                            <option value="{{ val }}"
+                                {% if val|stringformat:"s" == form.observation_year.value|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="observation_month" id="redecode-month"
+                            onchange="syncDateToSaveForm()" class="field__input" style="width:auto;">
+                        {% for val, label in form.fields.observation_month.choices %}
+                            <option value="{{ val }}"
+                                {% if val|stringformat:"s" == form.observation_month.value|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="button button-small button-secondary">
+                        {% trans "Re-decode" %}
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% if mapped_records %}
+            <div class="synop-mapped-success">
+                <h3 class="w-h3 synop-count-heading">
+                    {% blocktrans with n=mapped_records|length %}
+                        {{ n }} parameter(s) will be imported
+                    {% endblocktrans %}
+                </h3>
+                <table class="synop-preview-table">
+                    <thead>
+                    <tr>
+                        <th>{% trans "ADL Parameter" %}</th>
+                        <th>{% trans "FM12 Path" %}</th>
+                        <th>{% trans "Decoded Value" %}</th>
+                        <th>{% trans "Source Unit" %}</th>
+                        <th>{% trans "Import Status" %}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for r in mapped_records %}
+                        <tr>
+                            <td><strong>{{ r.adl_parameter_name }}</strong></td>
+                            <td><code class="code-sm">{{ r.fm12_element_path }}</code></td>
+                            <td>{{ r.value }}</td>
+                            <td><code>{{ r.source_unit_name }}</code></td>
+                            <td class="badge-will-import">✓</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% elif not station_error %}
+            <div class="help-block help-warning w-mb-4">
+                <svg class="icon icon-warning" aria-hidden="true">
+                    <use href="#icon-warning"></use>
+                </svg>
+                {% trans "No mapped parameters found in this message." %}
+            </div>
+        {% endif %}
+
+        {% if unmapped_elements %}
+            <div class="synop-unmapped-notice">
+                <div class="synop-unmapped-header">
+                    <div class="help-block help-warning">
+                        <svg class="icon icon-warning" aria-hidden="true">
+                            <use href="#icon-warning"></use>
+                        </svg>
+                        <strong>
+                            {% blocktrans with n=unmapped_elements|length %}
+                                {{ n }} decoded element(s) have no ADL Parameter Mapping — these values will be
+                                not be imported if you proceed without mapping.
+                            {% endblocktrans %}
+                        </strong>
+                    </div>
+
+                </div>
+                <p class="synop-unmapped-hint">
+                    {% trans "Use the SYNOP Setup Wizard to create mappings for these elements, or proceed to save the already-mapped parameters only." %}
+                </p>
+                <table class="synop-preview-table">
+                    <thead>
+                    <tr>
+                        <th>{% trans "FM12 Path" %}</th>
+                        <th>{% trans "Description" %}</th>
+                        <th>{% trans "Decoded Value" %}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for u in unmapped_elements %}
+                        <tr>
+                            <td><code class="code-sm">{{ u.path }}</code></td>
+                            <td>{{ u.label }}</td>
+                            <td>{{ u.value }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <div class="synop-unmapped-actions">
+                    {% if connection %}
+                        <a href="{{ synop_wizard_url }}" class="button bicolor button--icon">
+                            <span class="icon-wrapper">
+                                <svg class="icon icon-cog icon" aria-hidden="true"><use href="#icon-cog"></use></svg>
+                            </span>
+                            {% trans "Map missing parameters" %}
+                        </a>
+                    {% endif %}
+                    {% if mapped_records %}
+                        <button type="button" class="button button-secondary" onclick="showSynopSave()">
+                            {% trans "Proceed without mapping" %}
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if mapped_records %}
+            <div class="synop-save-actions{% if unmapped_elements %} synop-save-hidden{% endif %}"
+                 id="synop-save-actions">
+                <form method="post" class="synop-save-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save">
+                    <input type="hidden" name="raw_message" value="{{ form.raw_message.value }}">
+                    <input type="hidden" id="save-year" name="observation_year" value="{{ form.observation_year.value }}">
+                    <input type="hidden" id="save-month" name="observation_month" value="{{ form.observation_month.value }}">
+                    <a href="{% url 'collector_office_synop' %}" class="button bicolor button--icon button-secondary">
+                        <span class="icon-wrapper">
+                            <svg class="icon icon-edit icon" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                        </span>
+                        {% trans "Edit message" %}
+                    </a>
+                    <button class="button bicolor button--icon" type="submit">
+                        <span class="icon-wrapper">
+                            <svg class="icon icon-plus icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+                        </span>
+                        {% trans "Save & Ingest" %}
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+
+        <script>
+            function showSynopSave() {
+                var el = document.getElementById('synop-save-actions');
+                if (el) {
+                    el.classList.remove('synop-save-hidden');
+                    el.style.display = 'flex';
+                    el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                }
+            }
+
+            function syncDateToSaveForm() {
+                var yr = document.getElementById('redecode-year');
+                var mo = document.getElementById('redecode-month');
+                if (yr) document.getElementById('save-year').value = yr.value;
+                if (mo) document.getElementById('save-month').value = mo.value;
+            }
+        </script>
+
+    {% else %}
+        {# ======================= STEP 1 — ENTRY FORM ======================= #}
+
+        <div class="w-mb-6">
+            <div class="help-with-action-container">
+                <div class="help-block help-info">
+                    <div>
+                        <svg class="icon icon-help icon" aria-hidden="true">
+                            <use href="#icon-help"></use>
+                        </svg>
+                        <p>
+                            {% trans "Paste a raw FM12 SYNOP message. Click Decode to preview what will be ingested before saving." %}
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'collector_office_entry' %}"
+                   class="button button-small button--icon button-secondary">
+                   <span class="icon-wrapper">
+                       <svg class="icon icon-edit icon" aria-hidden="true">
+                           <use href="#icon-edit"></use>
+                       </svg>
+                   </span>
+                    {% trans "Switch to Direct Entry" %}
+                </a>
+            </div>
+        </div>
+
+        {% if editing_submission_id %}
+            <div class="help-block help-warning w-mb-4">
+                <svg class="icon icon-warning" aria-hidden="true">
+                    <use href="#icon-warning"></use>
+                </svg>
+                <p>
+                    {% blocktrans with id=editing_submission_id %}
+                        Pre-filling from SYNOP submission #{{ id }}.
+                    {% endblocktrans %}
+                    {% trans "Decoding and saving will create a new SYNOP message — the original is preserved." %}
+                </p>
+            </div>
+        {% endif %}
+
+        {% if success %}
+            <div class="w-field__errors w-mb-4">
+                <p class="text-success">
+                    {% blocktrans with id=synop_message.id %}
+                        SYNOP message #{{ id }} archived and queued for ingestion.
+                    {% endblocktrans %}
+                    {% if synop_message.submission %}
+                        {% blocktrans with sid=synop_message.submission.id %}
+                            Submission #{{ sid }} created.
+                        {% endblocktrans %}
+                    {% else %}
+                        {% trans "(No mappable parameters found — message archived but no observation records created.)" %}
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+
+        {% if errors %}
+            <div class="w-field__errors w-mb-4">
+                {% for field, msgs in errors.items %}
+                    {% for msg in msgs %}
+                        <div class="help-block help-critical">
+                            <svg class="icon icon-warning" aria-hidden="true">
+                                <use href="#icon-warning"></use>
+                            </svg>
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="decode">
+            {% for field in form %}
+                {% if field.is_hidden %}
+                    {{ field }}
+                {% else %}
+                    {% include "wagtailadmin/shared/field.html" %}
+                {% endif %}
+            {% endfor %}
+            <button type="submit" class="button button-primary">
+                {% trans "Decode" %}
+            </button>
+        </form>
+
+        <script>
+            document.querySelector("form").addEventListener("submit", function () {
+                const input = document.getElementById("obs-time");
+                if (input && input.value && !input.value.endsWith("Z")) {
+                    input.value = input.value + ":00Z";
+                }
+            });
+        </script>
+    {% endif %}
+{% endblock %}

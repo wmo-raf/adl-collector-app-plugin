@@ -1,0 +1,356 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block main_content %}
+    <style>
+        /* ── Wizard progress bar ── */
+        .wizard-steps {
+            display: flex;
+            gap: 0;
+            margin-bottom: 2rem;
+        }
+
+        .wizard-step {
+            flex: 1;
+            text-align: center;
+            padding: .6rem 1rem;
+            background: #f0f1f2;
+            border: 1px solid #cdd3d8;
+            font-size: .85rem;
+            color: #666;
+            position: relative;
+        }
+
+        .wizard-step:not(:last-child)::after {
+            content: "›";
+            position: absolute;
+            right: -.7rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: #999;
+            z-index: 1;
+        }
+
+        .wizard-step.active {
+            background: #007d7e;
+            color: #fff;
+            border-color: #007d7e;
+            font-weight: 600;
+        }
+
+        .wizard-step.done {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        /* ── Step headings & intros ── */
+        .wizard-step-title {
+            margin-bottom: .5rem;
+        }
+
+        .wizard-intro {
+            margin-bottom: 1.5rem;
+        }
+
+        .wizard-intro-list {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+
+        /* ── Flex header (title + sub-label inline) ── */
+        .wizard-flex-header {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .wizard-flex-header > .w-h2 {
+            margin: 0;
+        }
+
+        .wizard-flex-header > .help-block {
+            margin: 0;
+        }
+
+        /* ── Toggle bar (show-all / show-fewer) ── */
+        .wizard-toggle-bar {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Action bar at bottom of forms ── */
+        .wizard-action-bar {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        /* ── Warning/info banner ── */
+        .wizard-warning {
+            padding: .75rem 1rem;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+        }
+
+        /* ── Success message ── */
+        .text-success {
+            color: var(--w-color-positive-100);
+        }
+
+        /* ── Connection-step card grid ── */
+        .connection-grid {
+            display: grid;
+            grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .connection-label {
+            cursor: pointer;
+            display: block;
+        }
+
+        .connection-card {
+            border: 2px solid #dee2e6;
+            cursor: pointer;
+            transition: border-color .15s;
+        }
+
+        .visually-hidden-radio {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ── Parameter table ── */
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+
+        .param-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            padding: .5rem .75rem;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+        }
+
+        .param-table td {
+            padding: .5rem .75rem;
+            border-bottom: 1px solid #f0f1f2;
+            vertical-align: top;
+        }
+
+        .param-table tr:hover td {
+            background: #fafbfc;
+        }
+
+        .param-table tr.mapped td {
+            color: #6c757d;
+        }
+
+        .param-table .col-fm12 {
+            width: 30%;
+        }
+
+        .param-table .col-action {
+            width: 16%;
+        }
+
+        .param-table .col-param {
+            width: 26%;
+        }
+
+        .param-table .col-unit {
+            width: 14%;
+        }
+
+        .param-table .col-direct {
+            width: 14%;
+        }
+
+        .badge-coded {
+            display: inline-block;
+            padding: .15rem .4rem;
+            font-size: .75rem;
+            background: #e8f4fd;
+            color: #0056b3;
+            border-radius: 3px;
+            margin-left: .3rem;
+        }
+
+        .badge-mapped {
+            display: inline-block;
+            padding: .15rem .4rem;
+            font-size: .75rem;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 3px;
+        }
+
+        .action-radios label {
+            display: block;
+            margin-bottom: .2rem;
+            cursor: pointer;
+        }
+
+        .action-radios label input {
+            margin-right: .3rem;
+        }
+
+        .param-detail {
+            display: none;
+            margin-top: .5rem;
+        }
+
+        .param-detail.visible {
+            display: block;
+        }
+
+        select.param-select {
+            max-width: 280px;
+            width: 100%;
+        }
+
+        .direct-entry-hint {
+            font-size: .8rem;
+            color: #888;
+        }
+
+        /* ── Confirm table ── */
+        .confirm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+
+        .confirm-table th {
+            background: #f8f9fa;
+            padding: .5rem .75rem;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+        }
+
+        .confirm-table td {
+            padding: .5rem .75rem;
+            border-bottom: 1px solid #f0f1f2;
+        }
+
+        .confirm-path-label {
+            font-size: .82rem;
+            color: #555;
+        }
+
+        .text-direct-yes {
+            color: #155724;
+        }
+
+        .text-direct-no {
+            color: #856404;
+        }
+
+        .wizard-station-list {
+            margin: .5rem 0 0;
+            padding-left: 1.25rem;
+        }
+
+        /* ── New-params step form ── */
+        .wizard-param-box {
+            margin-bottom: 1.25rem;
+        }
+
+        .wizard-param-header {
+            margin-bottom: .75rem;
+        }
+
+        .wizard-param-grid {
+            display: grid;
+            grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .wizard-full-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .wizard-help {
+            font-size: .8rem;
+        }
+
+        .wizard-help--pt {
+            font-size: .8rem;
+            padding-top: 1.5rem;
+        }
+
+        .wizard-checkbox-label {
+            display: block;
+            margin-bottom: .4rem;
+        }
+
+        .wizard-checkbox-label--mt {
+            display: block;
+            margin-top: .4rem;
+        }
+
+        .wizard-code-input {
+            width: 80px;
+            margin-left: .3rem;
+        }
+
+        .required {
+            color: #d00;
+        }
+
+        /* ── Code snippets ── */
+        .code-sm {
+            font-size: .82rem;
+            color: #6c757d;
+        }
+
+        .code-sm--ml {
+            font-size: .82rem;
+            color: #6c757d;
+            margin-left: .5rem;
+        }
+
+        /* ── Table overflow wrapper ── */
+        .overflow-table {
+            overflow-x: auto;
+        }
+
+        .overflow-table--mb {
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ── Shared card box ── */
+        .w-box {
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+
+    <div class="wizard-steps">
+        <div class="wizard-step {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">1. Connection</div>
+        <div class="wizard-step {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">2. Parameters</div>
+        <div class="wizard-step {% if step == 3 %}active{% elif step > 3 %}done{% endif %}">3. New Parameters</div>
+        <div class="wizard-step {% if step == 4 %}active{% elif step > 4 %}done{% endif %}">4. Confirm</div>
+    </div>
+
+    {% block wizard_content %}{% endblock %}
+{% endblock %}

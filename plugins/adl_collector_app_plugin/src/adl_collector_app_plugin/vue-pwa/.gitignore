@@ -1,0 +1,4 @@
+node_modules/
+# Built output — goes to static/vue/ (same as adl/viewer pattern).
+# Commit those files if you want to ship without a build step in CI.
+../static/vue/

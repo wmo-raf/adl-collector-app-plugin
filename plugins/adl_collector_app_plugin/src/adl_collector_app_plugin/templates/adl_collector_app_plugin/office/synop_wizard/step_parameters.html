@@ -1,0 +1,249 @@
+{% extends "adl_collector_app_plugin/office/synop_wizard/layout.html" %}
+{% load i18n %}
+
+{% block wizard_content %}
+    <style>
+        .param-group-header td {
+            background: #f0f4ff;
+            font-weight: 600;
+            font-size: .82rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #3d5a99;
+            padding: .4rem .75rem;
+        }
+
+        .badge-from-synop {
+            display: inline-block;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #664d03;
+            font-size: .72rem;
+            font-weight: 600;
+            border-radius: 3px;
+            padding: .1rem .4rem;
+            margin-left: .4rem;
+            vertical-align: middle;
+        }
+    </style>
+
+    <div class="wizard-flex-header">
+        <h2 class="w-h2">
+            {% trans "Review FM12 Parameters" %}
+        </h2>
+        <span class="help-block">{{ connection.name }}</span>
+    </div>
+    <p class="help-block wizard-intro">
+        {% trans "For each FM12 parameter, choose an existing ADL DataParameter to map it to, mark it for creation, or skip it. Auto-suggestions are pre-selected where a match was found." %}
+    </p>
+
+    {% if errors %}
+        <div class="w-field__errors w-mb-4">
+            {% for e in errors %}
+                <div class="help-block help-critical">
+                    <svg class="icon icon-warning" aria-hidden="true">
+                        <use href="#icon-warning"></use>
+                    </svg>
+                    {{ e }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="wizard-toggle-bar">
+        {% if show_all %}
+            <strong>
+                {% blocktrans with n=common_count %}
+                    Showing all parameters ({{ n }} common + extended)
+                {% endblocktrans %}
+            </strong>
+            <a href="?step=2" class="button button-small">{% trans "Show common only" %}</a>
+        {% else %}
+            <strong>
+                {% blocktrans with n=common_count %}
+                    Showing {{ n }} most common parameters
+                {% endblocktrans %}
+            </strong>
+            <a href="?step=2&show_all=1" class="button button-small button--icon">
+                <svg class="icon icon-plus" aria-hidden="true">
+                    <use href="#icon-plus"></use>
+                </svg>
+                {% blocktrans with n=extended_count %}
+                    Show {{ n }} more
+                {% endblocktrans %}
+            </a>
+        {% endif %}
+    </div>
+
+    <form method="post" id="param-form">
+        {% csrf_token %}
+        <input type="hidden" name="step" value="2">
+        <input type="hidden" name="show_all" value="{{ show_all|yesno:'1,0' }}">
+
+        <div class="overflow-table">
+            <table class="param-table">
+                <thead>
+                <tr>
+                    <th class="col-fm12">{% trans "FM12 Parameter" %}</th>
+                    <th class="col-action">{% trans "Action" %}</th>
+                    <th class="col-param">{% trans "ADL DataParameter" %}</th>
+                    <th class="col-unit">{% trans "Source Unit" %}</th>
+                    <th class="col-direct">{% trans "Direct Entry" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% if has_synop_params %}
+                    <tr class="param-group-header">
+                        <td colspan="5">{% trans "From your SYNOP message" %}</td>
+                    </tr>
+                {% endif %}
+                {% for row in param_rows %}
+                    {% if has_synop_params %}
+                        {% ifchanged row.from_synop %}
+                            {% if not row.from_synop %}
+                                <tr class="param-group-header">
+                                    <td colspan="5">{% trans "All parameters" %}</td>
+                                </tr>
+                            {% endif %}
+                        {% endifchanged %}
+                    {% endif %}
+                    <tr {% if row.status == 'mapped' %}class="mapped"{% endif %}>
+                        <td>
+                            <strong>{{ row.meta.label }}</strong>
+                            {% if row.from_synop %}
+                                <span class="badge-from-synop">{% trans "From SYNOP" %}</span>
+                            {% endif %}<br>
+                            <code class="code-sm">{{ row.meta.path }}</code>
+                            {% if row.meta.is_coded %}
+                                <span class="badge-coded">
+                                    {% trans "coded" %}
+                                    {% if row.meta.wmo_code_table %}
+                                        ({{ row.meta.wmo_code_table }})
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        {% if row.status == 'mapped' %}
+                            <td>
+                                <span class="badge-mapped">
+                                    ✓ {% trans "mapped" %}
+                                </span>
+                            </td>
+                            <td>{{ row.existing.adl_parameter.name }}</td>
+                            <td>{{ row.existing.source_unit.symbol }}</td>
+                            <td>—</td>
+                        {% else %}
+                            {# unmapped — render action radios + dropdowns #}
+                            <td class="action-radios">
+                                <label>
+                                    <input type="radio"
+                                           name="action_{{ row.field_key }}"
+                                           value="use_existing"
+                                           {% if row.suggested_parameter and not row.force_create_new %}checked{% endif %}
+                                           onchange="toggleDetail('{{ row.field_key }}', 'use_existing')">
+                                    {% trans "Use existing" %}
+                                </label>
+                                <label>
+                                    <input type="radio"
+                                           name="action_{{ row.field_key }}"
+                                           value="create_new"
+                                           {% if not row.suggested_parameter or row.force_create_new %}checked{% endif %}
+                                           onchange="toggleDetail('{{ row.field_key }}', 'create_new')">
+                                    {% trans "Create new" %}
+                                </label>
+                                <label>
+                                    <input type="radio"
+                                           name="action_{{ row.field_key }}"
+                                           value="skip"
+                                           onchange="toggleDetail('{{ row.field_key }}', 'skip')">
+                                    {% trans "Skip" %}
+                                </label>
+                            </td>
+
+                            <td>
+                                <div id="detail_use_{{ row.field_key }}"
+                                     class="param-detail{% if row.suggested_parameter and not row.force_create_new %} visible{% endif %}">
+                                    <select name="adl_parameter_{{ row.field_key }}" class="param-select">
+                                        <option value="">— {% trans "select parameter" %} —</option>
+                                        {% for p in all_parameters %}
+                                            <option value="{{ p.pk }}"
+                                                    {% if row.suggested_parameter and row.suggested_parameter.pk == p.pk %}selected{% endif %}>
+                                                {{ p.name }} ({{ p.unit.symbol }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div id="detail_new_{{ row.field_key }}"
+                                     class="param-detail{% if not row.suggested_parameter or row.force_create_new %} visible{% endif %}">
+                                    <em class="help-block">{% trans "Name will be set in the next step." %}</em>
+                                </div>
+                                <div id="detail_skip_{{ row.field_key }}" class="param-detail">
+                                    <em class="muted">{% trans "Skipped." %}</em>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div id="unit_use_{{ row.field_key }}"
+                                     class="param-detail{% if row.suggested_parameter and not row.force_create_new %} visible{% endif %}">
+                                    <select name="unit_{{ row.field_key }}" class="param-select">
+                                        <option value="">— {% trans "unit" %} —</option>
+                                        {% for u in all_units %}
+                                            <option value="{{ u.pk }}"
+                                                    {% if row.suggested_unit and row.suggested_unit.pk == u.pk %}selected{% endif %}>
+                                                {{ u.symbol }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div id="unit_new_{{ row.field_key }}"
+                                     class="param-detail{% if not row.suggested_parameter or row.force_create_new %} visible{% endif %}">
+                                    <em class="help-block direct-entry-hint">{% trans "Next step." %}</em>
+                                </div>
+                            </td>
+
+                            <td>
+                                <label title="{% trans 'Show this parameter in office and mobile direct-entry forms.' %}">
+                                    <input type="checkbox"
+                                           name="show_direct_{{ row.field_key }}"
+                                           {% if not row.meta.is_coded %}checked{% endif %}>
+                                    <span class="direct-entry-hint">{% trans "Show" %}</span>
+                                </label>
+                                {% if row.meta.is_coded %}
+                                    <br>
+                                    <span class="direct-entry-hint">
+                                      {% trans "(coded — off by default)" %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="wizard-action-bar">
+            <a href="{% url 'synop_setup_wizard' %}?step=1" class="button">← {% trans "Back" %}</a>
+            <button type="submit" class="button button-primary">{% trans "Next →" %}</button>
+        </div>
+    </form>
+
+    <script>
+        function toggleDetail(fk, action) {
+            const ids = {
+                detail_use: document.getElementById('detail_use_' + fk),
+                detail_new: document.getElementById('detail_new_' + fk),
+                detail_skip: document.getElementById('detail_skip_' + fk),
+                unit_use: document.getElementById('unit_use_' + fk),
+                unit_new: document.getElementById('unit_new_' + fk),
+            };
+
+            ids.detail_use && (ids.detail_use.style.display = action === 'use_existing' ? 'block' : 'none');
+            ids.detail_new && (ids.detail_new.style.display = action === 'create_new' ? 'block' : 'none');
+            ids.detail_skip && (ids.detail_skip.style.display = action === 'skip' ? 'block' : 'none');
+            ids.unit_use && (ids.unit_use.style.display = action === 'use_existing' ? 'block' : 'none');
+            ids.unit_new && (ids.unit_new.style.display = action === 'create_new' ? 'block' : 'none');
+        }
+    </script>
+{% endblock %}

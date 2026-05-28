@@ -1,0 +1,41 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .cs-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .cs-card {
+            display: block;
+            text-decoration: none;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .cs-card-icon {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+
+    <div class="w-mb-6">
+        <p class="help-block">{% trans "Select a connection to manage." %}</p>
+    </div>
+
+    <div class="cs-card-grid">
+        {% for conn in connections %}
+            <a href="{% url 'collector_connection_overview' conn.pk %}"
+               class="cs-card card">
+                <span class="icon icon-form cs-card-icon"></span>
+                <strong>{{ conn.name }}</strong>
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}

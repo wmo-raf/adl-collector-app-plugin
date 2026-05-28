@@ -1,0 +1,128 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .sd-date-filter {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .sd-date-label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .sd-date-input {
+            padding: .3rem .5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: .9rem;
+        }
+
+        .sd-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .sd-nowrap {
+            white-space: nowrap;
+        }
+
+        .sd-time-cell {
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sd-muted-dash {
+            color: #adb5bd;
+        }
+
+        .sd-no-data {
+            margin-top: 1rem;
+        }
+    </style>
+
+    <div class="w-mb-4">
+        <a href="{% url 'collector_connection_overview' connection.pk %}"
+           class="button button-secondary button-small bicolor button--icon">
+            <span class="icon-wrapper">
+                <svg class="icon icon-arrow-left" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+            </span>
+            {% trans "Back to Connection Overview" %}
+        </a>
+    </div>
+
+    <div class="w-mb-4">
+        <p class="help-block">
+            {% trans "Connection" %}: <strong>{{ connection.name }}</strong>
+            &nbsp;|&nbsp;
+            {% trans "Station" %}: <strong>{{ station_link.station.name }}</strong>
+        </p>
+    </div>
+
+    <form method="get" class="sd-date-filter">
+        <label for="date-filter" class="sd-date-label">{% trans "Date (UTC)" %}:</label>
+        <input id="date-filter" type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+               class="sd-date-input">
+        <button type="submit" class="button button-secondary button-small">
+            {% trans "Filter" %}
+        </button>
+    </form>
+
+    {% if rows %}
+        <div class="sd-table-wrapper">
+            <table class="listing">
+                <thead>
+                <tr>
+                    <th class="sd-nowrap">{% trans "Obs. Time (UTC)" %}</th>
+                    {% for param in sorted_params %}
+                        <th title="{{ param.name }}" class="sd-nowrap">{{ param.name }}</th>
+                    {% endfor %}
+                    <th>{% trans "Method" %}</th>
+                    <th>{% trans "Action" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td class="sd-time-cell">
+                            {{ row.submission.observation_time|date:"H:i" }}
+                        </td>
+                        {% for v in row.values %}
+                            <td>
+                                {% if v is not None %}{{ v }}{% else %}<span class="sd-muted-dash">—</span>{% endif %}
+                            </td>
+                        {% endfor %}
+                        <td>
+                            {% if row.method == "SYNOP" %}
+                                <span class="status-tag status-tag--primary">{{ row.method }}</span>
+                            {% elif row.method == "Field Observer" %}
+                                <span class="status-tag status-tag--success">{{ row.method }}</span>
+                            {% else %}
+                                <span class="status-tag">{{ row.method }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ row.edit_url }}"
+                               class="button button-small button-secondary bicolor button--icon">
+                            <span class="icon-wrapper">
+                                <svg class="icon icon-edit" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                            </span>
+                                {% trans "Edit" %}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="help-block sd-no-data">
+            {% blocktrans with d=selected_date|date:"N j, Y" %}
+                No submissions found for {{ d }}.
+            {% endblocktrans %}
+        </p>
+    {% endif %}
+{% endblock %}

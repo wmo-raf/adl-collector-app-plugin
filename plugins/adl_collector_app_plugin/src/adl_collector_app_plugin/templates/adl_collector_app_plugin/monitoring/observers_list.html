@@ -1,0 +1,79 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .mon-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+    </style>
+
+    <div class="w-mb-4">
+        <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}"
+           class="button button-small button-secondary">
+            &larr; {% trans "Back to Monitoring" %}
+        </a>
+    </div>
+
+    <div class="mon-filter-bar">
+        <form method="get" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <input type="hidden" name="connection" value="{{ connection.pk }}">
+            <label for="date-filter">{% trans "Date:" %}</label>
+            <input type="date" id="date-filter" name="date" value="{{ selected_date }}"
+                   class="field__input">
+            <button type="submit" class="button button-small">{% trans "Filter" %}</button>
+        </form>
+        {% if selected_date %}
+            <a href="?connection={{ connection.pk }}" class="button button-small button-secondary">
+                {% trans "Clear" %}
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="panel panel--nested">
+        <div class="panel__header">
+            <h3 class="w-m-0">
+                {% trans "Observer Activity" %}
+                {% if selected_date %}&mdash; {{ selected_date }}{% else %}{% trans "(all time)" %}{% endif %}
+            </h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing">
+                <thead>
+                <tr>
+                    <th>{% trans "Observer" %}</th>
+                    <th>{% trans "Station" %}</th>
+                    <th class="w-text-right">{% trans "Submissions" %}</th>
+                    <th>{% trans "Last Seen" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for obs in observers %}
+                    <tr>
+                        <td>{{ obs.user.get_full_name|default:obs.user.username }}</td>
+                        <td class="muted">{{ obs.station_link.station.name }}</td>
+                        <td class="w-text-right">{{ obs.submission_count }}</td>
+                        <td>
+                            {% if obs.last_seen %}
+                                {{ obs.last_seen|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <em class="muted">{% trans "No observer activity found." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

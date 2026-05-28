@@ -1,0 +1,120 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .mon-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+    </style>
+
+    <div class="w-mb-4">
+        <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}"
+           class="button button-small button-secondary">
+            &larr; {% trans "Back to Monitoring" %}
+        </a>
+    </div>
+
+    <div class="mon-filter-bar">
+        <form method="get" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <input type="hidden" name="connection" value="{{ connection.pk }}">
+            <label for="date-filter">{% trans "Date:" %}</label>
+            <input type="date" id="date-filter" name="date" value="{{ selected_date }}"
+                   class="field__input">
+            <button type="submit" class="button button-small">{% trans "Filter" %}</button>
+        </form>
+        {% if selected_date %}
+            <a href="?connection={{ connection.pk }}" class="button button-small button-secondary">
+                {% trans "Clear" %}
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="panel panel--nested">
+        <div class="panel__header">
+            <h3 class="w-m-0">
+                {% trans "Station Submission Status" %}
+                {% if selected_date %}&mdash; {{ selected_date }}{% else %}{% trans "(all time)" %}{% endif %}
+            </h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing">
+                <thead>
+                <tr>
+                    <th>{% trans "Station" %}</th>
+                    <th class="w-text-right">{% trans "Submissions" %}</th>
+                    <th>{% trans "Last Submission" %}</th>
+                    <th>{% trans "Earliest Obs" %}</th>
+                    <th>{% trans "Latest Obs" %}</th>
+                    <th>{% trans "Start Date" %}</th>
+                    <th>{% trans "Status" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for sl in stations %}
+                    <tr>
+                        <td><strong>{{ sl.station.name }}</strong></td>
+                        <td class="w-text-right">
+                            <strong>{{ sl.submission_count }}</strong>
+                        </td>
+                        <td>
+                            {% if sl.last_submission %}
+                                {{ sl.last_submission|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.earliest_obs %}
+                                {% if sl.has_data_before_start %}
+                                    <span class="status-tag status-tag--warning"
+                                          title="{% trans 'Data before configured start date' %}">
+                                        ⚠ {{ sl.earliest_obs|date:"Y-m-d H:i" }} UTC
+                                    </span>
+                                {% else %}
+                                    {{ sl.earliest_obs|date:"Y-m-d H:i" }} UTC
+                                {% endif %}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.latest_obs %}
+                                {{ sl.latest_obs|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.start_date %}
+                                {{ sl.start_date|date:"Y-m-d" }}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.submission_count == 0 %}
+                                <span class="status-tag status-tag--critical">{% trans "No data" %}</span>
+                                {% elif sl.submission_count < 3 %}
+                                <span class="status-tag status-tag--warning">{% trans "Low" %}</span>
+                            {% else %}
+                                <span class="status-tag status-tag--primary">{% trans "OK" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <em class="muted">{% trans "No station links found." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

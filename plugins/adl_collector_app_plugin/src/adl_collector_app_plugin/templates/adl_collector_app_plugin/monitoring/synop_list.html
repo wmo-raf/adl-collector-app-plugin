@@ -1,0 +1,104 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .code-raw {
+            font-size: 0.75em;
+            word-break: break-all;
+        }
+
+        .mon-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+    </style>
+
+    <div class="w-mb-4">
+        <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}"
+           class="button button-small button-secondary">
+            &larr; {% trans "Back to Monitoring" %}
+        </a>
+    </div>
+
+    <div class="mon-filter-bar">
+        <form method="get" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <input type="hidden" name="connection" value="{{ connection.pk }}">
+            <label for="date-filter">{% trans "Date:" %}</label>
+            <input type="date" id="date-filter" name="date" value="{{ selected_date }}"
+                   class="field__input">
+            <button type="submit" class="button button-small">{% trans "Filter" %}</button>
+        </form>
+        {% if selected_date %}
+            <a href="?connection={{ connection.pk }}" class="button button-small button-secondary">
+                {% trans "Clear" %}
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="panel panel--nested">
+        <div class="panel__header">
+            <h3 class="w-m-0">
+                {% trans "SYNOP Message Archive" %}
+                {% if selected_date %}&mdash; {{ selected_date }}{% endif %}
+            </h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing small">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans "Station" %}</th>
+                    <th>{% trans "Submitted By" %}</th>
+                    <th>{% trans "Obs Time" %}</th>
+                    <th>{% trans "Received" %}</th>
+                    <th>{% trans "Ingested" %}</th>
+                    <th>{% trans "Raw Message" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for msg in synop_messages %}
+                    <tr>
+                        <td>{{ msg.id }}</td>
+                        <td>{{ msg.station_link.station.name }}</td>
+                        <td>
+                            {% if msg.submitted_by %}
+                                {{ msg.submitted_by.get_full_name|default:msg.submitted_by.username }}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if msg.observation_time %}
+                                {{ msg.observation_time|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ msg.received_at|date:"Y-m-d H:i" }} UTC</td>
+                        <td>
+                            {% if msg.submission %}
+                                <span class="status-tag status-tag--primary">#{{ msg.submission.id }}</span>
+                            {% else %}
+                                <span class="status-tag status-tag--critical">{% trans "No" %}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code class="code-raw">{{ msg.raw_message|truncatechars:80 }}</code>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <em class="muted">{% trans "No SYNOP messages found." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

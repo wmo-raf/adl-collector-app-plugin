@@ -1,0 +1,12 @@
+{
+  "name": "ADL Collector",
+  "short_name": "ADL Collector",
+  "description": "ADL Field Observer — manual weather data entry for observers in the field.",
+  "start_url": "/plugins/adl-collector-app-plugin/field-app/",
+  "scope": "/plugins/adl-collector-app-plugin/field-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a3a5c",
+  "background_color": "#f4f6f8",
+  "icons": []
+}

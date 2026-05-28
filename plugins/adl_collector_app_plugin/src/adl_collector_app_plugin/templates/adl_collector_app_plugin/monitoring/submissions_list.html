@@ -1,0 +1,92 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .mon-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+    </style>
+
+    <div class="w-mb-4">
+        <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}"
+           class="button button-small button-secondary">
+            &larr; {% trans "Back to Monitoring" %}
+        </a>
+    </div>
+
+    <div class="mon-filter-bar">
+        <form method="get" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <input type="hidden" name="connection" value="{{ connection.pk }}">
+            <label for="date-filter">{% trans "Date:" %}</label>
+            <input type="date" id="date-filter" name="date" value="{{ selected_date }}"
+                   class="field__input">
+            <button type="submit" class="button button-small">{% trans "Filter" %}</button>
+        </form>
+        {% if selected_date %}
+            <a href="?connection={{ connection.pk }}" class="button button-small button-secondary">
+                {% trans "Clear" %}
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="panel panel--nested">
+        <div class="panel__header">
+            <h3 class="w-m-0">
+                {% trans "Submissions" %}
+                {% if selected_date %}&mdash; {{ selected_date }}{% endif %}
+            </h3>
+        </div>
+        <div class="panel__content">
+            <table class="listing small">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans "Station" %}</th>
+                    <th>{% trans "Observer / Staff" %}</th>
+                    <th>{% trans "Observation Time" %}</th>
+                    <th>{% trans "Submitted At" %}</th>
+                    <th>{% trans "Source" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for sub in submissions %}
+                    <tr>
+                        <td>{{ sub.id }}</td>
+                        <td>{{ sub.station_link.station.name }}</td>
+                        <td>
+                            {% if sub.observer %}
+                                {{ sub.observer.user.get_full_name|default:sub.observer.user.username }}
+                            {% elif sub.office_submitted_by %}
+                                {{ sub.office_submitted_by.get_full_name|default:sub.office_submitted_by.username }}
+                                <span class="muted">({% trans "office" %})</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ sub.observation_time|date:"Y-m-d H:i" }} UTC</td>
+                        <td>{{ sub.created_at|date:"Y-m-d H:i" }} UTC</td>
+                        <td>
+                            {% if sub.synop_source %}
+                                <span class="status-tag">SYNOP</span>
+                            {% elif sub.office_submitted_by %}
+                                <span class="status-tag status-tag--secondary">{% trans "Office" %}</span>
+                            {% else %}
+                                <span class="status-tag status-tag--primary">{% trans "Mobile" %}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <em class="muted">{% trans "No submissions found." %}</em>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
