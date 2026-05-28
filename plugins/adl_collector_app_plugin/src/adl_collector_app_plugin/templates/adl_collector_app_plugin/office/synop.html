@@ -74,6 +74,15 @@
             color: #333;
         }
 
+        .synop-mapped-success {
+            background: #e8f5f5;
+            border: 1px solid #43b1b4;
+            border-left: 4px solid #007d7e;
+            border-radius: 4px;
+            padding: 1rem 1.25rem;
+            margin-top: 2rem;
+        }
+
         /* Step 2 decode-preview header */
         .synop-decode-header {
             display: flex;
@@ -122,11 +131,6 @@
             padding: .75rem 1rem;
         }
 
-        /* Step 1 — switch-to-entry link spacing */
-        .synop-switch-link {
-            margin-left: .5rem;
-        }
-
         /* Step 1 — success message */
         .text-success {
             color: var(--w-color-positive-100);
@@ -137,9 +141,54 @@
             margin-left: .5rem;
         }
 
+
+        /* Unmapped parameters warning notice */
+        .synop-unmapped-notice {
+            background: #fff8e1;
+            border: 1px solid #ffc107;
+            border-left: 4px solid #e6a817;
+            border-radius: 4px;
+            padding: 1rem 1.25rem;
+            margin-top: 2rem;
+        }
+
+        .synop-unmapped-header {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: .4rem;
+            color: #664d03;
+        }
+
+        .synop-unmapped-hint {
+            color: #555;
+            font-size: .9rem;
+            margin: .25rem 0 .75rem 0;
+        }
+
+        .synop-unmapped-actions {
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .synop-save-hidden {
+            display: none;
+        }
+
         /* Step 2 — mapped-count heading */
         .synop-count-heading {
-            margin-bottom: .5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .help-with-action-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 20px;
         }
     </style>
 
@@ -147,7 +196,9 @@
         {# ======================= STEP 2 — DECODE PREVIEW ======================= #}
 
         <div class="synop-decode-header">
-            <h1 class="w-h1">{% trans "SYNOP Decode Preview" %}</h1>
+            <h1 class="w-h1">
+                {% trans "SYNOP Decode Preview" %}
+            </h1>
             <a href="{% url 'collector_office_synop' %}"
                class="button button-small bicolor button--icon button-secondary">
                 <span class="icon-wrapper">
@@ -189,60 +240,105 @@
                     </div>
                 {% endif %}
             </div>
+
+            <div class="synop-date-adjust w-mt-4"
+                 style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+                <span class="help-block" style="margin:0;">
+                    {% trans "Adjust year/month if incorrect:" %}
+                </span>
+                <form method="post" style="display:contents;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="decode">
+                    <input type="hidden" name="raw_message" value="{{ form.raw_message.value }}">
+                    <select name="observation_year" id="redecode-year"
+                            onchange="syncDateToSaveForm()" class="field__input" style="width:auto;">
+                        {% for val, label in form.fields.observation_year.choices %}
+                            <option value="{{ val }}"
+                                {% if val|stringformat:"s" == form.observation_year.value|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="observation_month" id="redecode-month"
+                            onchange="syncDateToSaveForm()" class="field__input" style="width:auto;">
+                        {% for val, label in form.fields.observation_month.choices %}
+                            <option value="{{ val }}"
+                                {% if val|stringformat:"s" == form.observation_month.value|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="button button-small button-secondary">
+                        {% trans "Re-decode" %}
+                    </button>
+                </form>
+            </div>
         {% endif %}
 
         {% if mapped_records %}
-            <h3 class="w-h3 synop-count-heading">
-                {% blocktrans with n=mapped_records|length %}{{ n }} parameter(s) will be imported{% endblocktrans %}
-            </h3>
-            <table class="synop-preview-table">
-                <thead>
-                <tr>
-                    <th>{% trans "ADL Parameter" %}</th>
-                    <th>{% trans "FM12 Path" %}</th>
-                    <th>{% trans "Decoded Value" %}</th>
-                    <th>{% trans "Source Unit" %}</th>
-                    <th>{% trans "Status" %}</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for r in mapped_records %}
+            <div class="synop-mapped-success">
+                <h3 class="w-h3 synop-count-heading">
+                    {% blocktrans with n=mapped_records|length %}
+                        {{ n }} parameter(s) will be imported
+                    {% endblocktrans %}
+                </h3>
+                <table class="synop-preview-table">
+                    <thead>
                     <tr>
-                        <td><strong>{{ r.adl_parameter_name }}</strong></td>
-                        <td><code class="code-sm">{{ r.fm12_element_path }}</code></td>
-                        <td>{{ r.value }}</td>
-                        <td><code>{{ r.source_unit_name }}</code></td>
-                        <td class="badge-will-import">✓ {% trans "Will be imported" %}</td>
+                        <th>{% trans "ADL Parameter" %}</th>
+                        <th>{% trans "FM12 Path" %}</th>
+                        <th>{% trans "Decoded Value" %}</th>
+                        <th>{% trans "Source Unit" %}</th>
+                        <th>{% trans "Import Status" %}</th>
                     </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                    {% for r in mapped_records %}
+                        <tr>
+                            <td><strong>{{ r.adl_parameter_name }}</strong></td>
+                            <td><code class="code-sm">{{ r.fm12_element_path }}</code></td>
+                            <td>{{ r.value }}</td>
+                            <td><code>{{ r.source_unit_name }}</code></td>
+                            <td class="badge-will-import">✓</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% elif not station_error %}
-            <div class="help-block w-mb-4">
+            <div class="help-block help-warning w-mb-4">
                 <svg class="icon icon-warning" aria-hidden="true">
                     <use href="#icon-warning"></use>
                 </svg>
-                {% trans "No mapped parameters found in this message. Configure SYNOP parameter mappings first." %}
-                <a href="{% url 'synop_setup_wizard' %}?connection={{ connection.pk }}"
-                   class="button button-small synop-wizard-link">
-                    {% trans "Run SYNOP Setup Wizard" %}
-                </a>
+                {% trans "No mapped parameters found in this message." %}
             </div>
         {% endif %}
 
         {% if unmapped_elements %}
-            <details class="synop-details" open>
-                <summary>
-                    {% blocktrans with n=unmapped_elements|length %}{{ n }} decoded element(s) not mapped — will be
-                        skipped{% endblocktrans %}
-                </summary>
+            <div class="synop-unmapped-notice">
+                <div class="synop-unmapped-header">
+                    <div class="help-block help-warning">
+                        <svg class="icon icon-warning" aria-hidden="true">
+                            <use href="#icon-warning"></use>
+                        </svg>
+                        <strong>
+                            {% blocktrans with n=unmapped_elements|length %}
+                                {{ n }} decoded element(s) have no ADL Parameter Mapping — these values will be
+                                not be imported if you proceed without mapping.
+                            {% endblocktrans %}
+                        </strong>
+                    </div>
+
+                </div>
+                <p class="synop-unmapped-hint">
+                    {% trans "Use the SYNOP Setup Wizard to create mappings for these elements, or proceed to save the already-mapped parameters only." %}
+                </p>
                 <table class="synop-preview-table">
                     <thead>
                     <tr>
                         <th>{% trans "FM12 Path" %}</th>
                         <th>{% trans "Description" %}</th>
                         <th>{% trans "Decoded Value" %}</th>
-                        <th>{% trans "Status" %}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -251,27 +347,41 @@
                             <td><code class="code-sm">{{ u.path }}</code></td>
                             <td>{{ u.label }}</td>
                             <td>{{ u.value }}</td>
-                            <td class="badge-skip">— {% trans "Not mapped, skip" %}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
-            </details>
+                <div class="synop-unmapped-actions">
+                    {% if connection %}
+                        <a href="{{ synop_wizard_url }}" class="button bicolor button--icon">
+                            <span class="icon-wrapper">
+                                <svg class="icon icon-cog icon" aria-hidden="true"><use href="#icon-cog"></use></svg>
+                            </span>
+                            {% trans "Map missing parameters" %}
+                        </a>
+                    {% endif %}
+                    {% if mapped_records %}
+                        <button type="button" class="button button-secondary" onclick="showSynopSave()">
+                            {% trans "Proceed without mapping" %}
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
         {% endif %}
 
         {% if mapped_records %}
-            <div class="synop-save-actions">
+            <div class="synop-save-actions{% if unmapped_elements %} synop-save-hidden{% endif %}"
+                 id="synop-save-actions">
                 <form method="post" class="synop-save-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save">
                     <input type="hidden" name="raw_message" value="{{ form.raw_message.value }}">
-                    <input type="hidden" name="observation_year" value="{{ form.observation_year.value }}">
-                    <input type="hidden" name="observation_month" value="{{ form.observation_month.value }}">
+                    <input type="hidden" id="save-year" name="observation_year" value="{{ form.observation_year.value }}">
+                    <input type="hidden" id="save-month" name="observation_month" value="{{ form.observation_month.value }}">
                     <a href="{% url 'collector_office_synop' %}" class="button bicolor button--icon button-secondary">
-                               <span class="icon-wrapper">
-                                   <svg class="icon icon-edit icon" aria-hidden="true"><use
-                                           href="#icon-edit"></use></svg>
-                               </span>
+                        <span class="icon-wrapper">
+                            <svg class="icon icon-edit icon" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                        </span>
                         {% trans "Edit message" %}
                     </a>
                     <button class="button bicolor button--icon" type="submit">
@@ -284,30 +394,62 @@
             </div>
         {% endif %}
 
+        <script>
+            function showSynopSave() {
+                var el = document.getElementById('synop-save-actions');
+                if (el) {
+                    el.classList.remove('synop-save-hidden');
+                    el.style.display = 'flex';
+                    el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                }
+            }
+
+            function syncDateToSaveForm() {
+                var yr = document.getElementById('redecode-year');
+                var mo = document.getElementById('redecode-month');
+                if (yr) document.getElementById('save-year').value = yr.value;
+                if (mo) document.getElementById('save-month').value = mo.value;
+            }
+        </script>
+
     {% else %}
         {# ======================= STEP 1 — ENTRY FORM ======================= #}
 
         <div class="w-mb-6">
-            <p class="help-block">
-                {% trans "Paste a raw FM12 SYNOP message. Click Decode to preview what will be ingested before saving." %}
-                <a href="{% url 'collector_office_entry' %}" class="button button-small button--icon synop-switch-link">
-                    <svg class="icon icon-edit w-mr-1" aria-hidden="true">
-                        <use href="#icon-edit"></use>
-                    </svg>
+            <div class="help-with-action-container">
+                <div class="help-block help-info">
+                    <div>
+                        <svg class="icon icon-help icon" aria-hidden="true">
+                            <use href="#icon-help"></use>
+                        </svg>
+                        <p>
+                            {% trans "Paste a raw FM12 SYNOP message. Click Decode to preview what will be ingested before saving." %}
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'collector_office_entry' %}"
+                   class="button button-small button--icon button-secondary">
+                   <span class="icon-wrapper">
+                       <svg class="icon icon-edit icon" aria-hidden="true">
+                           <use href="#icon-edit"></use>
+                       </svg>
+                   </span>
                     {% trans "Switch to Direct Entry" %}
                 </a>
-            </p>
+            </div>
         </div>
 
         {% if editing_submission_id %}
-            <div class="help-block alert-warning w-mb-4">
+            <div class="help-block help-warning w-mb-4">
                 <svg class="icon icon-warning" aria-hidden="true">
                     <use href="#icon-warning"></use>
                 </svg>
-                {% blocktrans with id=editing_submission_id %}
-                    Pre-filling from SYNOP submission #{{ id }}.
-                {% endblocktrans %}
-                {% trans "Decoding and saving will create a new SYNOP message — the original is preserved." %}
+                <p>
+                    {% blocktrans with id=editing_submission_id %}
+                        Pre-filling from SYNOP submission #{{ id }}.
+                    {% endblocktrans %}
+                    {% trans "Decoding and saving will create a new SYNOP message — the original is preserved." %}
+                </p>
             </div>
         {% endif %}
 

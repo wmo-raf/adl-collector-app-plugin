@@ -1,0 +1,49 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block main_content %}
+    <style>
+        .cs-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .cs-card {
+            display: block;
+            text-decoration: none;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .cs-card-icon {
+            height: 1rem;
+            min-width: 1rem;
+            width: 1rem;
+        }
+    </style>
+
+    <div class="help-block help-info">
+        <svg class="icon icon-help icon" aria-hidden="true">
+            <use href="#icon-help"></use>
+        </svg>
+        <p>
+            {% trans "Select a connection to view its monitoring dashboard." %}
+        </p>
+    </div>
+
+    <div class="cs-card-grid">
+        {% for conn in connections %}
+            <a href="{% url 'collector_monitoring' %}?connection={{ conn.pk }}" class="cs-card card">
+                <svg class="icon icon-site cs-card-icon" aria-hidden="true">
+                    <use href="#icon-site"></use>
+                </svg>
+                <strong>{{ conn.name }}</strong>
+            </a>
+            {% empty %}
+            <p class="help-block">{% trans "No connections configured." %}</p>
+        {% endfor %}
+    </div>
+{% endblock %}

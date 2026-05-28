@@ -10,14 +10,14 @@
 </head>
 <body>
 <div id="collector-field-app"
-     data-api-base="/api/adl-collector"
+     data-api-base="/plugins/api/adl-collector"
      data-token-url="/api/token/"></div>
 
 <script type="module" crossorigin src="{% static 'adl_collector_app_plugin/vue/collector-field-app.js' %}"></script>
 
 <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('{% url "collector_field_sw" %}', {scope: '{% url "collector_field_pwa" %}'})
+        navigator.serviceWorker.register('{% url "plugins:collector_field_sw" %}', {scope: '{% url "plugins:collector_field_pwa" %}'})
             .then(reg => console.log('SW registered, scope:', reg.scope))
             .catch(err => console.warn('SW registration failed:', err));
     }

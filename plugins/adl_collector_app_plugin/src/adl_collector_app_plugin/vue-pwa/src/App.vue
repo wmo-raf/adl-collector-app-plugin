@@ -130,6 +130,7 @@ nav a.router-link-active {
   border: none;
   cursor: pointer;
   font-size: 0.95rem;
+  transition: opacity 0.15s;
 }
 
 .btn-primary {
@@ -140,6 +141,13 @@ nav a.router-link-active {
 .btn-secondary {
   background: #e2e8f0;
   color: #1a1a2e;
+}
+
+.btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .btn-full {
@@ -170,10 +178,55 @@ label {
   margin-top: 0.5rem;
 }
 
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+  color: #b91c1c;
+  font-size: 0.875rem;
+}
+
+.error-banner p {
+  margin: 0;
+}
+
+.error-banner p + p {
+  margin-top: 0.25rem;
+}
+
+.field-error {
+  display: block;
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 400;
+  margin-top: 0.2rem;
+}
+
+.input-error {
+  border-color: #dc2626 !important;
+}
+
 .success {
   color: #16a34a;
   font-size: 0.875rem;
   margin-top: 0.5rem;
+}
+
+.success-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+  color: #15803d;
+  font-size: 0.875rem;
+}
+
+.success-banner p {
+  margin: 0.2rem 0 0;
+  font-weight: 400;
 }
 
 .muted {

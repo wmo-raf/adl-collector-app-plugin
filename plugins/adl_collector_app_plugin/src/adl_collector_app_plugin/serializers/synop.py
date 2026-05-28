@@ -32,11 +32,13 @@ class SynopDecodeInSer(serializers.Serializer):
     """Used for the decode-preview endpoint — does not persist anything."""
     station_link_id = serializers.IntegerField()
     raw_message = serializers.CharField()
+    observation_year = serializers.IntegerField(required=False, allow_null=True)
+    observation_month = serializers.IntegerField(required=False, allow_null=True)
 
     def validate(self, data):
         try:
             sl = ManualObservationStationLink.objects.select_related(
-                "network_connection"
+                "network_connection", "station"
             ).get(pk=data["station_link_id"])
         except ManualObservationStationLink.DoesNotExist:
             raise serializers.ValidationError("Invalid station_link_id.")
@@ -46,13 +48,47 @@ class SynopDecodeInSer(serializers.Serializer):
         except (ValueError, ImportError) as exc:
             raise serializers.ValidationError(f"Could not decode SYNOP: {exc}")
 
+        decoded_station_id = (decoded.get("station_id") or {}).get("value")
+        if decoded_station_id is not None and str(decoded_station_id) != str(sl.station.wsi_local):
+            raise serializers.ValidationError(
+                f"Message station ID '{decoded_station_id}' does not match "
+                f"selected station '{sl.station.wsi_local}'."
+            )
+
         mappings = list(
             SynopParameterMapping.objects.select_related("adl_parameter", "source_unit").all()
         )
 
         data["_station_link"] = sl
         data["_decoded"] = decoded
+        data["_decoded_station_id"] = decoded_station_id
         data["_mappings"] = mappings
+
+        show_param_ids = set(
+            ManualObservationStationLinkVariableMapping.objects.filter(
+                station_link=sl,
+                show_in_direct_entry=True,
+            ).values_list("adl_parameter_id", flat=True)
+        )
+        data["_show_param_ids"] = show_param_ids
+
+        observation_time = None
+        year = data.get("observation_year")
+        month = data.get("observation_month")
+        if year is not None and month is not None:
+            obs_time_info = decoded.get("obs_time") or {}
+            day = (obs_time_info.get("day") or {}).get("value")
+            hour = (obs_time_info.get("hour") or {}).get("value")
+            if day is not None and hour is not None:
+                try:
+                    observation_time = datetime(
+                        year=year, month=month, day=day, hour=hour,
+                        minute=0, second=0, tzinfo=timezone.utc,
+                    )
+                except ValueError:
+                    pass
+        data["_observation_time"] = observation_time
+
         return data
 
 

@@ -2,6 +2,31 @@
 {% load i18n %}
 
 {% block wizard_content %}
+    <style>
+        .param-group-header td {
+            background: #f0f4ff;
+            font-weight: 600;
+            font-size: .82rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #3d5a99;
+            padding: .4rem .75rem;
+        }
+
+        .badge-from-synop {
+            display: inline-block;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #664d03;
+            font-size: .72rem;
+            font-weight: 600;
+            border-radius: 3px;
+            padding: .1rem .4rem;
+            margin-left: .4rem;
+            vertical-align: middle;
+        }
+    </style>
+
     <div class="wizard-flex-header">
         <h2 class="w-h2">
             {% trans "Review FM12 Parameters" %}
@@ -67,10 +92,27 @@
                 </tr>
                 </thead>
                 <tbody>
+                {% if has_synop_params %}
+                    <tr class="param-group-header">
+                        <td colspan="5">{% trans "From your SYNOP message" %}</td>
+                    </tr>
+                {% endif %}
                 {% for row in param_rows %}
+                    {% if has_synop_params %}
+                        {% ifchanged row.from_synop %}
+                            {% if not row.from_synop %}
+                                <tr class="param-group-header">
+                                    <td colspan="5">{% trans "All parameters" %}</td>
+                                </tr>
+                            {% endif %}
+                        {% endifchanged %}
+                    {% endif %}
                     <tr {% if row.status == 'mapped' %}class="mapped"{% endif %}>
                         <td>
-                            <strong>{{ row.meta.label }}</strong><br>
+                            <strong>{{ row.meta.label }}</strong>
+                            {% if row.from_synop %}
+                                <span class="badge-from-synop">{% trans "From SYNOP" %}</span>
+                            {% endif %}<br>
                             <code class="code-sm">{{ row.meta.path }}</code>
                             {% if row.meta.is_coded %}
                                 <span class="badge-coded">
@@ -98,7 +140,7 @@
                                     <input type="radio"
                                            name="action_{{ row.field_key }}"
                                            value="use_existing"
-                                           {% if row.suggested_parameter %}checked{% endif %}
+                                           {% if row.suggested_parameter and not row.force_create_new %}checked{% endif %}
                                            onchange="toggleDetail('{{ row.field_key }}', 'use_existing')">
                                     {% trans "Use existing" %}
                                 </label>
@@ -106,7 +148,7 @@
                                     <input type="radio"
                                            name="action_{{ row.field_key }}"
                                            value="create_new"
-                                           {% if not row.suggested_parameter %}checked{% endif %}
+                                           {% if not row.suggested_parameter or row.force_create_new %}checked{% endif %}
                                            onchange="toggleDetail('{{ row.field_key }}', 'create_new')">
                                     {% trans "Create new" %}
                                 </label>
@@ -121,7 +163,7 @@
 
                             <td>
                                 <div id="detail_use_{{ row.field_key }}"
-                                     class="param-detail{% if row.suggested_parameter %} visible{% endif %}">
+                                     class="param-detail{% if row.suggested_parameter and not row.force_create_new %} visible{% endif %}">
                                     <select name="adl_parameter_{{ row.field_key }}" class="param-select">
                                         <option value="">— {% trans "select parameter" %} —</option>
                                         {% for p in all_parameters %}
@@ -133,7 +175,7 @@
                                     </select>
                                 </div>
                                 <div id="detail_new_{{ row.field_key }}"
-                                     class="param-detail{% if not row.suggested_parameter %} visible{% endif %}">
+                                     class="param-detail{% if not row.suggested_parameter or row.force_create_new %} visible{% endif %}">
                                     <em class="help-block">{% trans "Name will be set in the next step." %}</em>
                                 </div>
                                 <div id="detail_skip_{{ row.field_key }}" class="param-detail">
@@ -143,7 +185,7 @@
 
                             <td>
                                 <div id="unit_use_{{ row.field_key }}"
-                                     class="param-detail{% if row.suggested_parameter %} visible{% endif %}">
+                                     class="param-detail{% if row.suggested_parameter and not row.force_create_new %} visible{% endif %}">
                                     <select name="unit_{{ row.field_key }}" class="param-select">
                                         <option value="">— {% trans "unit" %} —</option>
                                         {% for u in all_units %}
@@ -155,7 +197,7 @@
                                     </select>
                                 </div>
                                 <div id="unit_new_{{ row.field_key }}"
-                                     class="param-detail{% if not row.suggested_parameter %} visible{% endif %}">
+                                     class="param-detail{% if not row.suggested_parameter or row.force_create_new %} visible{% endif %}">
                                     <em class="help-block direct-entry-hint">{% trans "Next step." %}</em>
                                 </div>
                             </td>

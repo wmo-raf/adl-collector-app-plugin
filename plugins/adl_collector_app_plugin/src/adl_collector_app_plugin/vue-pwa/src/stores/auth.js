@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {getTokenUrl, getCsrfToken} from '@/api'
+import {getCsrfToken, getTokenUrl} from '@/api'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({

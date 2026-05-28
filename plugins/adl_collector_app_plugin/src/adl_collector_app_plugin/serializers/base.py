@@ -9,6 +9,7 @@ from ..models import (
     ManualObservationStationLink,
     ManualObservationStationLinkVariableMapping,
 )
+from ..wmo_codes import WMO_CODE_TABLES
 
 
 class ObserverStationLinkListSerializer(ReadOnlyModelSerializer):
@@ -29,15 +30,16 @@ class ManualObservationStationLinkVariableMappingSerializer(ReadOnlyModelSeriali
     obs_parameter_unit = serializers.CharField(source="obs_parameter_unit.name")
     adl_parameter_name = serializers.CharField(source="adl_parameter.name")
     range_check = serializers.SerializerMethodField()
-    
+    wmo_options = serializers.SerializerMethodField()
+
     class Meta:
         model = ManualObservationStationLinkVariableMapping
-        fields = ("id", "adl_parameter_name", "obs_parameter_unit", "is_rainfall", "range_check",)
-    
+        fields = ("id", "adl_parameter_name", "obs_parameter_unit", "is_rainfall", "range_check", "wmo_options",)
+
     def get_range_check(self, obj):
         if not obj.qc_checks:
             return None
-        
+
         for block in obj.qc_checks:
             if block.block_type == "range_check":
                 block_value = block.value
@@ -46,8 +48,17 @@ class ManualObservationStationLinkVariableMappingSerializer(ReadOnlyModelSeriali
                     "max": block_value.get("max_value"),
                     "inclusive": block_value.get("inclusive_bounds", True),
                 }
-        
+
         return None
+
+    def get_wmo_options(self, obj):
+        param = obj.adl_parameter
+        if not param.is_coded or not param.wmo_code_table:
+            return None
+        options = WMO_CODE_TABLES.get(param.wmo_code_table)
+        if not options:
+            return None
+        return [[code, label] for code, label in options]
 
 
 class ObserverStationLinkDetailSerializer(ReadOnlyModelSerializer):
@@ -57,7 +68,7 @@ class ObserverStationLinkDetailSerializer(ReadOnlyModelSerializer):
     timezone = serializers.SerializerMethodField()
     
     def get_variable_mappings(self, obj):
-        qs = obj.variable_mappings.filter(show_in_direct_entry=True)
+        qs = obj.variable_mappings.filter(show_in_direct_entry=True).select_related("adl_parameter", "obs_parameter_unit")
         return ManualObservationStationLinkVariableMappingSerializer(qs, many=True).data
     
     class Meta:

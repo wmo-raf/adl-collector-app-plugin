@@ -27,45 +27,48 @@ class SynopSetupWizardView(View):
     Step 3 — Create new DataParameters for paths marked "create_new" (optional)
     Step 4 — Review all proposed mappings and confirm / save
     """
-
+    
     TPLS = "adl_collector_app_plugin/office/synop_wizard/{}.html"
-
+    
     # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
-
+    
     def _state(self, request):
         return request.session.get(SYNOP_WIZARD_SESSION_KEY, {})
-
+    
     def _save_state(self, request, state):
         request.session[SYNOP_WIZARD_SESSION_KEY] = state
         request.session.modified = True
-
+    
     def _clear_state(self, request):
         request.session.pop(SYNOP_WIZARD_SESSION_KEY, None)
-
+    
     @staticmethod
     def _field_key(path):
         """Convert 'air_temperature.value' → 'air_temperature_value' for use in form field names."""
         return path.replace(".", "_")
-
+    
     # ------------------------------------------------------------------
     # dispatch
     # ------------------------------------------------------------------
-
+    
     def get(self, request):
         step = int(request.GET.get("step", 1))
         state = self._state(request)
-
+        
         if step == 1 and "connection" in request.GET:
             try:
                 conn = ManualObservationConnection.objects.get(pk=request.GET["connection"])
                 state["connection_id"] = conn.pk
+                prioritized = request.GET.getlist("path")
+                if prioritized:
+                    state["prioritized_paths"] = prioritized
                 self._save_state(request, state)
                 return redirect(reverse("synop_setup_wizard") + "?step=2")
             except ManualObservationConnection.DoesNotExist:
                 pass
-
+        
         if step == 1:
             return self._step1_get(request, state)
         if step == 2:
@@ -81,7 +84,7 @@ class SynopSetupWizardView(View):
                 return redirect(reverse("synop_setup_wizard") + "?step=2")
             return self._step4_get(request, state)
         return redirect(reverse("synop_setup_wizard") + "?step=1")
-
+    
     def post(self, request):
         step = int(request.POST.get("step", 1))
         state = self._state(request)
@@ -94,11 +97,11 @@ class SynopSetupWizardView(View):
         if step == 4:
             return self._step4_post(request, state)
         return redirect(reverse("synop_setup_wizard") + "?step=1")
-
+    
     # ------------------------------------------------------------------
     # Step 1 — select connection
     # ------------------------------------------------------------------
-
+    
     def _step1_get(self, request, state):
         from ..synop_wizard_data import count_mapped_common, SYNOP_COMMON_PARAMETERS
         connections = list(ManualObservationConnection.objects.all())
@@ -116,7 +119,7 @@ class SynopSetupWizardView(View):
             "global_incomplete": global_incomplete,
             "saved": request.GET.get("saved") == "1",
         })
-
+    
     def _step1_post(self, request, state):
         conn_id = request.POST.get("connection_id")
         try:
@@ -126,36 +129,45 @@ class SynopSetupWizardView(View):
         state["connection_id"] = int(conn_id)
         self._save_state(request, state)
         return redirect(reverse("synop_setup_wizard") + "?step=2")
-
+    
     # ------------------------------------------------------------------
     # Step 2 — review & map parameters
     # ------------------------------------------------------------------
-
+    
     def _step2_get(self, request, state, errors=None):
         from adl.core.models import DataParameter, Unit
         from ..synop_wizard_data import (
             SYNOP_COMMON_PARAMETERS, SYNOP_EXTENDED_PARAMETERS,
             suggest_adl_parameter, get_or_suggest_unit,
         )
-
+        
         conn = ManualObservationConnection.objects.get(pk=state["connection_id"])
         show_all = request.GET.get("show_all") == "1" or state.get("show_all", False)
-        parameters = SYNOP_COMMON_PARAMETERS + (SYNOP_EXTENDED_PARAMETERS if show_all else [])
-
+        prioritized_paths = set(state.get("prioritized_paths", []))
+        
+        # Base list; inject any prioritised extended paths not yet visible
+        parameters = list(SYNOP_COMMON_PARAMETERS) + (list(SYNOP_EXTENDED_PARAMETERS) if show_all else [])
+        if prioritized_paths:
+            base_path_set = {m["path"] for m in parameters}
+            ext_by_path = {m["path"]: m for m in SYNOP_EXTENDED_PARAMETERS}
+            for path in prioritized_paths:
+                if path not in base_path_set and path in ext_by_path:
+                    parameters.append(ext_by_path[path])
+        
         existing = {
             m.fm12_element_path: m
             for m in SynopParameterMapping.objects.select_related("adl_parameter", "source_unit").all()
         }
-
+        
         param_rows = []
         for meta in parameters:
             path = meta["path"]
             fk = self._field_key(path)
             existing_mapping = existing.get(path)
             if existing_mapping:
-                param_rows.append({"meta": meta, "field_key": fk, "status": "mapped", "existing": existing_mapping})
+                row = {"meta": meta, "field_key": fk, "status": "mapped", "existing": existing_mapping}
             else:
-                param_rows.append({
+                row = {
                     "meta": meta,
                     "field_key": fk,
                     "status": "unmapped",
@@ -163,34 +175,52 @@ class SynopSetupWizardView(View):
                     "suggested_parameter": suggest_adl_parameter(meta),
                     "suggested_unit": get_or_suggest_unit(meta["suggested_unit_symbol"]) if meta.get(
                         "suggested_unit_symbol") else None,
-                })
-
+                }
+            row["from_synop"] = path in prioritized_paths
+            # Force "Create new" only when the path comes from the SYNOP decode
+            # preview AND the wizard has been run before (existing global mappings
+            # exist). If no prior mappings exist at all, let auto-matching decide.
+            row["force_create_new"] = row["from_synop"] and bool(existing)
+            param_rows.append(row)
+        
+        # Prioritised rows bubble to the top; within each group preserve original order
+        if prioritized_paths:
+            param_rows.sort(key=lambda r: (not r["from_synop"],))
+        
         return render(request, self.TPLS.format("step_parameters"), {
             "page_title": "SYNOP Setup Wizard",
             "step": 2,
             "connection": conn,
             "param_rows": param_rows,
             "show_all": show_all,
+            "has_synop_params": bool(prioritized_paths),
             "all_parameters": DataParameter.objects.select_related("unit").order_by("name"),
             "all_units": Unit.objects.order_by("name"),
             "common_count": len(SYNOP_COMMON_PARAMETERS),
             "extended_count": len(SYNOP_EXTENDED_PARAMETERS),
             "errors": errors or [],
         })
-
+    
     def _step2_post(self, request, state):
         from ..synop_wizard_data import SYNOP_COMMON_PARAMETERS, SYNOP_EXTENDED_PARAMETERS
-
+        
         show_all = request.POST.get("show_all") == "1"
-        parameters = SYNOP_COMMON_PARAMETERS + (SYNOP_EXTENDED_PARAMETERS if show_all else [])
-
+        prioritized_paths = set(state.get("prioritized_paths", []))
+        parameters = list(SYNOP_COMMON_PARAMETERS) + (list(SYNOP_EXTENDED_PARAMETERS) if show_all else [])
+        if prioritized_paths:
+            base_path_set = {m["path"] for m in parameters}
+            ext_by_path = {m["path"]: m for m in SYNOP_EXTENDED_PARAMETERS}
+            for path in prioritized_paths:
+                if path not in base_path_set and path in ext_by_path:
+                    parameters.append(ext_by_path[path])
+        
         mappings = []
         errors = []
         for meta in parameters:
             path = meta["path"]
             fk = self._field_key(path)
             action = request.POST.get(f"action_{fk}", "skip")
-
+            
             if action == "skip":
                 continue
             if action == "use_existing":
@@ -221,23 +251,23 @@ class SynopSetupWizardView(View):
                     "wmo_code_table": meta.get("wmo_code_table", ""),
                     "adl_category": meta.get("adl_category", "meteorological"),
                 })
-
+        
         if errors:
             state["show_all"] = show_all
             self._save_state(request, state)
             return self._step2_get(request, state, errors=errors)
-
+        
         state["mappings"] = mappings
         state["show_all"] = show_all
         self._save_state(request, state)
-
+        
         has_new = any(m["action"] == "create_new" for m in mappings)
         return redirect(reverse("synop_setup_wizard") + f"?step={'3' if has_new else '4'}")
-
+    
     # ------------------------------------------------------------------
     # Step 3 — create missing DataParameters
     # ------------------------------------------------------------------
-
+    
     def _step3_get(self, request, state, errors=None):
         from adl.core.models import Unit, DataParameter
         new_mappings = [
@@ -253,13 +283,13 @@ class SynopSetupWizardView(View):
             "category_choices": DataParameter._meta.get_field("category").choices,
             "errors": errors or [],
         })
-
+    
     def _step3_post(self, request, state):
         from adl.core.models import DataParameter, Unit
-
+        
         mappings = state.get("mappings", [])
         errors = []
-
+        
         for mapping in mappings:
             if mapping["action"] != "create_new":
                 continue
@@ -270,11 +300,11 @@ class SynopSetupWizardView(View):
             wmo_code_table = request.POST.get(f"new_wmo_code_table_{fk}", "").strip()
             category = request.POST.get(f"new_category_{fk}", "meteorological")
             show_direct = request.POST.get(f"show_direct_{fk}") == "on"
-
+            
             if not param_name:
                 errors.append(f'Name is required for "{mapping["label"]}".')
                 continue
-
+            
             if is_coded:
                 unit, _ = Unit.objects.get_or_create(symbol="1", defaults={"name": "dimensionless"})
             else:
@@ -288,7 +318,7 @@ class SynopSetupWizardView(View):
                         f'Create the Unit first, then return to the wizard.'
                     )
                     continue
-
+            
             param, _ = DataParameter.objects.get_or_create(
                 name=param_name,
                 defaults={
@@ -302,27 +332,27 @@ class SynopSetupWizardView(View):
             mapping["unit_id"] = unit.id
             mapping["show_in_direct_entry"] = show_direct
             mapping["action"] = "use_existing"
-
+        
         if errors:
             self._save_state(request, state)
             return self._step3_get(request, state, errors=errors)
-
+        
         state["mappings"] = mappings
         self._save_state(request, state)
         return redirect(reverse("synop_setup_wizard") + "?step=4")
-
+    
     # ------------------------------------------------------------------
     # Step 4 — review & confirm
     # ------------------------------------------------------------------
-
+    
     def _step4_get(self, request, state):
         from adl.core.models import DataParameter, Unit
-
+        
         conn = ManualObservationConnection.objects.get(pk=state["connection_id"])
         stations = ManualObservationStationLink.objects.filter(
             network_connection=conn, enabled=True
         ).select_related("station")
-
+        
         enriched = []
         for m in state.get("mappings", []):
             if m["action"] != "use_existing" or not m.get("adl_parameter_id") or not m.get("unit_id"):
@@ -333,7 +363,7 @@ class SynopSetupWizardView(View):
             except (DataParameter.DoesNotExist, Unit.DoesNotExist):
                 continue
             enriched.append({**m, "adl_parameter_name": param.name, "unit_name": unit.name})
-
+        
         return render(request, self.TPLS.format("step_confirm"), {
             "page_title": "SYNOP Setup Wizard",
             "step": 4,
@@ -342,34 +372,34 @@ class SynopSetupWizardView(View):
             "stations": stations,
             "station_count": stations.count(),
         })
-
+    
     def _step4_post(self, request, state):
         from adl.core.models import DataParameter, Unit
-
+        
         conn = ManualObservationConnection.objects.get(pk=state["connection_id"])
         stations = list(ManualObservationStationLink.objects.filter(
             network_connection=conn, enabled=True
         ))
-
+        
         mappings = state.get("mappings", [])
-
+        
         proposed = [
             m for m in mappings
             if m.get("action") == "use_existing"
                and m.get("adl_parameter_id")
                and m.get("unit_id")
         ]
-
+        
         param_to_paths: dict = {}
         for m in proposed:
             param_to_paths.setdefault(m["adl_parameter_id"], []).append(m["path"])
-
+        
         proposed_paths = {m["path"] for m in proposed}
         existing_param_to_path = {
             spm.adl_parameter_id: spm.fm12_element_path
             for spm in SynopParameterMapping.objects.exclude(fm12_element_path__in=proposed_paths)
         }
-
+        
         duplicate_errors = []
         for param_id, paths in param_to_paths.items():
             if len(paths) > 1:
@@ -384,28 +414,28 @@ class SynopSetupWizardView(View):
                     f"'{existing_param_to_path[param_id]}'. "
                     "Remove or re-assign that mapping before adding another."
                 )
-
+        
         if duplicate_errors:
             return self._step2_get(request, state, errors=duplicate_errors)
-
+        
         created_synop = 0
         created_station = 0
-
+        
         with transaction.atomic():
             for m in mappings:
                 if m["action"] != "use_existing" or not m.get("adl_parameter_id") or not m.get("unit_id"):
                     continue
-
+                
                 param = DataParameter.objects.get(pk=m["adl_parameter_id"])
                 unit = Unit.objects.get(pk=m["unit_id"])
-
+                
                 _, synop_created = SynopParameterMapping.objects.get_or_create(
                     fm12_element_path=m["path"],
                     defaults={"adl_parameter": param, "source_unit": unit},
                 )
                 if synop_created:
                     created_synop += 1
-
+                
                 show_direct = m.get("show_in_direct_entry", not m.get("is_coded", False))
                 for sl in stations:
                     if not sl.variable_mappings.filter(adl_parameter=param).exists():
@@ -416,7 +446,25 @@ class SynopSetupWizardView(View):
                             show_in_direct_entry=show_direct,
                         )
                         created_station += 1
-
+            
+            # Sync pass — ensure every globally-mapped SYNOP parameter has a
+            # station-level variable mapping for every station on this connection.
+            # This covers parameters mapped in previous wizard runs that may be
+            # missing for stations added later.
+            all_synop_mappings = SynopParameterMapping.objects.select_related(
+                "adl_parameter", "source_unit"
+            ).all()
+            for sl in stations:
+                for spm in all_synop_mappings:
+                    if not sl.variable_mappings.filter(adl_parameter=spm.adl_parameter).exists():
+                        ManualObservationStationLinkVariableMapping.objects.create(
+                            station_link=sl,
+                            adl_parameter=spm.adl_parameter,
+                            obs_parameter_unit=spm.source_unit,
+                            show_in_direct_entry=False,
+                        )
+                        created_station += 1
+        
         self._clear_state(request)
         msg_success(
             request,

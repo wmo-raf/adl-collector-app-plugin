@@ -4,8 +4,10 @@ import zoneinfo
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Prefetch
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone as dj_timezone
 from django.utils.decorators import method_decorator
+from django.utils.translation import gettext as _
 from django.views import View
 from rest_framework import status, permissions
 from rest_framework.response import Response
@@ -41,17 +43,30 @@ class DecodeSynopView(APIView):
     def post(self, request):
         ser = SynopDecodeInSer(data=request.data, context={"request": request})
         ser.is_valid(raise_exception=True)
-        
+
         decoded = ser.validated_data["_decoded"]
         mappings = ser.validated_data["_mappings"]
-        
+        show_param_ids = ser.validated_data["_show_param_ids"]
+        observation_time = ser.validated_data["_observation_time"]
+        decoded_station_id = ser.validated_data["_decoded_station_id"]
+
         mapped_records = build_submission_records_from_synop(decoded, mappings)
-        
-        return Response({
+
+        visible_records = [
+            r for r in mapped_records
+            if r["adl_parameter_id"] in show_param_ids
+        ]
+
+        response_data = {
             "decoded": decoded,
-            "mapped_records": mapped_records,
+            "mapped_records": visible_records,
             "unmapped_count": len(mappings) - len(mapped_records),
-        })
+            "station_id": decoded_station_id,
+        }
+        if observation_time is not None:
+            response_data["observation_time"] = observation_time.isoformat()
+
+        return Response(response_data)
 
 
 class SubmitSynopView(APIView):
@@ -83,6 +98,8 @@ class OfficeEntryView(View):
     GET  — render the office data entry form (station picker + variable mappings)
     POST — submit direct parameter values
     """
+    page_title = _("Direct Data Entry")
+    template_name = "adl_collector_app_plugin/office/entry.html"
     
     def _station_links_qs(self):
         return (
@@ -138,7 +155,7 @@ class OfficeEntryView(View):
                 editing_submission_id = None
         
         context = {
-            "page_title": "Office Data Entry",
+            "page_title": self.page_title,
             "station_links": station_links,
             "selected_link": selected_link,
             "wmo_code_tables": WMO_CODE_TABLES,
@@ -146,10 +163,11 @@ class OfficeEntryView(View):
             "observation_time": pre_filled_obs_time,
             "editing_submission_id": editing_submission_id,
         }
-        return render(request, "adl_collector_app_plugin/office/entry.html", context)
+        return render(request, self.template_name, context)
     
     def post(self, request):
         ser = OfficeSubmissionInSer(data=request.POST, context={"request": request})
+        
         if not ser.is_valid():
             station_links = self._station_links_qs()
             selected_id = request.POST.get("station_link_id")
@@ -159,8 +177,8 @@ class OfficeEntryView(View):
                     selected_link = station_links.get(id=selected_id)
                 except ManualObservationStationLink.DoesNotExist:
                     pass
-            return render(request, "adl_collector_app_plugin/office/entry.html", {
-                "page_title": "Office Data Entry",
+            return render(request, self.template_name, {
+                "page_title": self.page_title,
                 "station_links": station_links,
                 "selected_link": selected_link,
                 "errors": ser.errors,
@@ -168,8 +186,8 @@ class OfficeEntryView(View):
             })
         
         sub, was_duplicate = ser.save()
-        return render(request, "adl_collector_app_plugin/office/entry.html", {
-            "page_title": "Office Data Entry",
+        return render(request, self.template_name, {
+            "page_title": self.page_title,
             "station_links": self._station_links_qs(),
             "success": True,
             "duplicate": was_duplicate,
@@ -256,6 +274,19 @@ class OfficeSynopView(View):
                 )
                 mapped_records = build_submission_records_from_synop(decoded, mappings)
                 unmapped_elements = get_unmapped_elements(decoded, mappings)
+                # Detect station-level gaps: globally mapped but no station-level
+                # ManualObservationStationLinkVariableMapping for this station.
+                # These would silently fail at save time — surface them now.
+                station_param_ids = set(
+                    station_link.variable_mappings.values_list("adl_parameter_id", flat=True)
+                )
+                importable = [r for r in mapped_records if r["adl_parameter_id"] in station_param_ids]
+                gap = [r for r in mapped_records if r["adl_parameter_id"] not in station_param_ids]
+                mapped_records = importable
+                unmapped_elements = unmapped_elements + [
+                    {"path": r["fm12_element_path"], "label": r["adl_parameter_name"], "value": r["value"]}
+                    for r in gap
+                ]
             except ManualObservationStationLink.DoesNotExist:
                 station_error = f'No station link found for SYNOP station ID "{station_id}".'
         
@@ -272,7 +303,7 @@ class OfficeSynopView(View):
                 except ValueError:
                     pass
         
-        return render(request, _SYNOP_TPL, {
+        context = {
             "page_title": "SYNOP FM12 Entry",
             "step": 2,
             "form": form,
@@ -283,7 +314,16 @@ class OfficeSynopView(View):
             "mapped_records": mapped_records,
             "unmapped_elements": unmapped_elements,
             "observation_time": observation_time,
-        })
+        }
+        
+        if unmapped_elements:
+            wizard_url = reverse('synop_setup_wizard')
+            paths = ''.join(f"&path={u.get('path')}" for u in unmapped_elements)
+            context.update({
+                "synop_wizard_url": f"{wizard_url}?connection={connection.pk}{paths}"
+            })
+        
+        return render(request, _SYNOP_TPL, context)
     
     def _save(self, request, form):
         ser = SynopSubmitInSer(data=request.POST, context={"request": request})

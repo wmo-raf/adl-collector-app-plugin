@@ -33,10 +33,17 @@
             user-select: none;
         }
 
+        .co-card-header {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
         .co-card-icon {
-            font-size: 2rem;
-            display: block;
-            margin-bottom: 0.5rem;
+            height: 1rem;
+            margin: .046875rem 0;
+            min-width: 1rem;
+            width: 1rem;
         }
 
         .co-card-hint {
@@ -59,7 +66,7 @@
         }
 
         .co-section-title {
-            margin-bottom: .75rem;
+            margin-bottom: 1.5rem;
         }
 
         .co-hour-labels {
@@ -83,15 +90,20 @@
             margin-bottom: 1rem;
         }
 
-        .co-station-name {
+
+        .co-station-link {
             min-width: 190px;
             max-width: 190px;
             font-weight: 500;
-            text-decoration: none;
-            color: inherit;
             white-space: nowrap;
-            overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .co-station-name {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
         }
 
         .co-hour-slots {
@@ -155,58 +167,106 @@
 
         {# --- Monitoring --- #}
         <a href="{% url 'collector_monitoring' %}?connection={{ connection.pk }}" class="co-card card">
-            <span class="icon icon-site co-card-icon"></span>
-            <strong>{% trans "Monitoring" %}</strong>
-            <p class="help-block co-card-desc">{% trans "Submission stats, observer activity, SYNOP archive." %}</p>
+            <div class="co-card-header">
+                <svg class="icon icon-site co-card-icon" aria-hidden="true">
+                    <use href="#icon-site"></use>
+                </svg>
+                <strong>{% trans "Monitoring" %}</strong>
+            </div>
+
+            <p class="help-block co-card-desc">
+                {% trans "Submission stats, observer activity, SYNOP archive." %}
+            </p>
         </a>
 
-        {# --- Office Data Entry --- #}
+        {# --- Direct Data Entry --- #}
         {% if connection.enable_office_entry %}
             <a href="{% url 'collector_office_entry' %}?connection={{ connection.pk }}" class="co-card card">
-                <span class="icon icon-edit co-card-icon"></span>
-                <strong>{% trans "Office Data Entry" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Enter parameter values directly from the office." %}</p>
+                <div class="co-card-header">
+                    <svg class="icon icon-edit co-card-icon" aria-hidden="true">
+                        <use href="#icon-edit"></use>
+                    </svg>
+                    <strong>{% trans "Direct Data Entry" %}</strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Enter parameter values directly on a form." %}
+                </p>
             </a>
         {% else %}
             <div class="co-card--disabled card"
                  title="{% trans 'Enable Office Entry on this connection to use this feature.' %}">
-                <span class="icon icon-edit co-card-icon"></span>
-                <strong>{% trans "Office Data Entry" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Enter parameter values directly from the office." %}</p>
-                <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
+                <div class="co-card-header">
+                    <svg class="icon icon-edit co-card-icon" aria-hidden="true">
+                        <use href="#icon-edit"></use>
+                    </svg>
+                    <strong>{% trans "Direct Data Entry" %}</strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Enter parameter values directly on a form." %}</p>
+                <p class="help-block co-card-hint">
+                    {% trans "Not enabled" %}
+                </p>
             </div>
         {% endif %}
 
         {# --- SYNOP FM12 Entry --- #}
         {% if connection.enable_office_entry %}
             <a href="{% url 'collector_office_synop' %}?connection={{ connection.pk }}" class="co-card card">
-                <span class="icon icon-doc-full co-card-icon"></span>
-                <strong>{% trans "SYNOP FM12 Entry" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Paste and archive a raw FM12 SYNOP message." %}</p>
+                <div class="co-card-header">
+                    <svg class="icon icon-doc-full co-card-icon" aria-hidden="true">
+                        <use href="#icon-doc-full"></use>
+                    </svg>
+                    <strong>{% trans "SYNOP FM12 Entry" %}</strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Paste and load a raw FM12 SYNOP message." %}
+                </p>
             </a>
         {% else %}
             <div class="co-card--disabled card"
                  title="{% trans 'Enable Office Entry on this connection to use this feature.' %}">
-                <span class="icon icon-doc-full co-card-icon"></span>
-                <strong>{% trans "SYNOP FM12 Entry" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Paste and archive a raw FM12 SYNOP message." %}</p>
-                <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
+                <div class="co-card-header">
+                    <svg class="icon icon-doc-full co-card-icon" aria-hidden="true">
+                        <use href="#icon-doc-full"></use>
+                    </svg>
+                    <strong>{% trans "SYNOP FM12 Entry" %}</strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Paste and archive a raw FM12 SYNOP message." %}
+                </p>
+                <p class="help-block co-card-hint">
+                    {% trans "Not enabled" %}
+                </p>
             </div>
         {% endif %}
 
         {# --- Field Observer App --- #}
         {% if connection.enable_field_app %}
-            <a href="{% url 'collector_field_pwa' %}" target="_blank" class="co-card card">
-                <span class="icon icon-mobile-alt co-card-icon"></span>
-                <strong>{% trans "Field Observer App" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Open the PWA for field observers (installable)." %}</p>
+            <a href="{% url 'plugins:collector_field_pwa' %}" target="_blank" class="co-card card">
+                <div class="co-card-header">
+                    <svg class="icon icon-mobile-alt co-card-icon" aria-hidden="true">
+                        <use href="#icon-mobile-alt"></use>
+                    </svg>
+                    <strong>
+                        {% trans "Field Observer App" %}
+                    </strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Open the web app for field observers." %}
+                </p>
             </a>
         {% else %}
             <div class="co-card--disabled card"
                  title="{% trans 'Enable Field Observer App on this connection to use this feature.' %}">
-                <span class="icon icon-mobile-alt co-card-icon"></span>
-                <strong>{% trans "Field Observer App" %}</strong>
-                <p class="help-block co-card-desc">{% trans "Open the PWA for field observers (installable)." %}</p>
+                <div class="co-card-header">
+                    <svg class="icon icon-mobile-alt co-card-icon" aria-hidden="true">
+                        <use href="#icon-mobile-alt"></use>
+                    </svg>
+                    <strong>{% trans "Field Observer App" %}</strong>
+                </div>
+                <p class="help-block co-card-desc">
+                    {% trans "Open the web app for field observers." %}
+                </p>
                 <p class="help-block co-card-hint">{% trans "Not enabled" %}</p>
             </div>
         {% endif %}
@@ -233,36 +293,27 @@
                     </a>
                 </div>
             </div>
-
-            {# SYNOP Setup card #}
-            <div class="co-info-card">
-                <p class="co-info-card-title">{% trans "SYNOP Parameters" %}</p>
-                <div class="co-info-card-stat">{{ synop_param_count }}</div>
-                <div class="co-info-card-actions">
-                    <a href="{% url 'synop_setup_wizard' %}?connection={{ connection.pk }}"
-                       class="button button-secondary button-small">
-                        {% trans "Setup Wizard" %}
-                    </a>
-                    <form method="post"
-                          action="{% url 'collector_sync_synop_mappings' connection.pk %}"
-                          style="margin:0;">
-                        {% csrf_token %}
-                        <button type="submit" class="button button-small bicolor button--icon">
-                            <span class="icon-wrapper">
-                                <svg class="icon icon-cog icon" aria-hidden="true"><use href="#icon-cog"></use></svg>
-                            </span>
-                            {% trans "Sync Mappings" %}
-                        </button>
-                    </form>
+            {% if connection.enable_office_entry %}
+                {# SYNOP Setup card #}
+                <div class="co-info-card">
+                    <p class="co-info-card-title">{% trans "SYNOP Mapping" %}</p>
+                    <div class="co-info-card-stat">{{ synop_param_count }}</div>
+                    <div class="co-info-card-actions">
+                        <a href="{% url 'synop_setup_wizard' %}?connection={{ connection.pk }}"
+                           class="button button-secondary button-small">
+                            {% trans "Setup Wizard" %}
+                        </a>
+                    </div>
                 </div>
-            </div>
-
+            {% endif %}
         </div>
     </div>
 
     {% if station_status %}
         <div class="co-section">
-            <h2 class="w-h3 co-section-title">{% trans "Today's Collection Status" %} — {{ today }}</h2>
+            <h2 class="w-h3 co-section-title">
+                {% trans "Collection Status" %} — {{ today }}
+            </h2>
             <div class="co-hour-labels">
                 {% for h in hour_labels %}
                     <div class="co-hour-label">{{ h }}</div>
@@ -272,9 +323,14 @@
             {% for item in station_status %}
                 <div class="co-station-row">
                     <a href="{{ item.detail_url }}"
-                       class="co-station-name"
+                       class="co-station-link"
                        title="{{ item.station_link.station.name }}">
-                        {{ item.station_link.station.name }}
+                        <div class="co-station-name">
+                            <strong>{{ item.station_link.station.name }}</strong>
+                            <svg class="icon icon-arrow-right co-card-icon" aria-hidden="true">
+                                <use href="#icon-arrow-right"></use>
+                            </svg>
+                        </div>
                     </a>
                     <div class="co-hour-slots">
                         {% for has_data in item.hours %}

@@ -8,6 +8,8 @@ from adl.core.registries import Plugin
 from django.urls import path, include
 from django.utils import timezone as dj_timezone
 
+from .views import field_pwa, field_service_worker
+
 from .models import (
     CollectorSubmissionRecord,
     ManualObservationStationLink,
@@ -24,6 +26,8 @@ class ADLCollectorPlugin(Plugin):
     def get_urls(self):
         return [
             path("api/adl-collector/", include('adl_collector_app_plugin.urls', namespace="adl_collector_app")),
+            path("adl-collector-app-plugin/field-app/", field_pwa, name="collector_field_pwa"),
+            path("adl-collector-app-plugin/field-app/sw.js", field_service_worker, name="collector_field_sw"),
         ]
     
     def after_save_records(

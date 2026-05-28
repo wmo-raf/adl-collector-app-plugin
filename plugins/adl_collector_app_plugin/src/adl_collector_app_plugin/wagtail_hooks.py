@@ -11,12 +11,15 @@ from .views import (
     OfficeSynopView,
     SynopSetupWizardView,
     StationDetailView,
-    field_pwa,
-    field_service_worker,
     connection_overview,
     connection_selector,
     sync_station_synop_mappings_view,
     MonitoringDashboardView,
+    TriggerReprocessView,
+    MonitoringSubmissionsListView,
+    MonitoringSynopListView,
+    MonitoringObserversListView,
+    MonitoringStationsListView,
 )
 
 
@@ -60,14 +63,29 @@ def urlconf_adl_collector_app_plugin():
             name="collector_monitoring",
         ),
         path(
-            "adl-collector-app-plugin/field-app/",
-            field_pwa,
-            name="collector_field_pwa",
+            "adl-collector-app-plugin/monitoring/submissions/",
+            MonitoringSubmissionsListView.as_view(),
+            name="collector_monitoring_submissions",
         ),
         path(
-            "adl-collector-app-plugin/field-app/sw.js",
-            field_service_worker,
-            name="collector_field_sw",
+            "adl-collector-app-plugin/monitoring/synop/",
+            MonitoringSynopListView.as_view(),
+            name="collector_monitoring_synop",
+        ),
+        path(
+            "adl-collector-app-plugin/monitoring/observers/",
+            MonitoringObserversListView.as_view(),
+            name="collector_monitoring_observers",
+        ),
+        path(
+            "adl-collector-app-plugin/monitoring/stations/",
+            MonitoringStationsListView.as_view(),
+            name="collector_monitoring_stations",
+        ),
+        path(
+            "adl-collector-app-plugin/monitoring/reprocess/",
+            TriggerReprocessView.as_view(),
+            name="collector_monitoring_reprocess",
         ),
         path(
             "adl-collector-app-plugin/connections/<int:pk>/",

@@ -78,7 +78,7 @@ class ManualObservationConnection(NetworkConnection):
         if self.enable_field_app:
             columns.append({
                 "label": _("Field Observer App"),
-                "url": reverse("collector_field_pwa"),
+                "url": reverse("plugins:collector_field_pwa"),
                 "icon_name": "mobile-alt",
                 "kwargs": {"attrs": {"target": "_blank"}}
             })

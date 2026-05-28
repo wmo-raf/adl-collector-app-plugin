@@ -7,56 +7,93 @@
             font-size: 0.75em;
             word-break: break-all;
         }
+
+        .panel-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
     </style>
 
-    <div class="w-mb-6">
-        <div class="w-mb-4">
+    <div class="w-mb-12">
+        <div class="w-mb-8">
+            <a href="{% url 'collector_connection_overview' connection.pk %}"
+               class="button button-small button-secondary">
+                &larr; {% trans "Back to Overview" %}
+            </a>
+        </div>
+        <div class="w-mb-8">
             {% trans "Period:" %}
             {% for d in period_choices %}
-                <a href="?days={{ d }}"
+                <a href="?connection={{ connection.pk }}&days={{ d }}"
                    class="button button-small {% if d == period_days %}button-primary{% endif %}">
                     {% blocktrans with d=d %}Last {{ d }} days{% endblocktrans %}
                 </a>
             {% endfor %}
 
-            <a href="{% url 'collector_office_entry' %}" class="button button-small button--icon w-ml-4">
-                <svg class="icon icon-edit w-mr-1" aria-hidden="true">
-                    <use href="#icon-edit"></use>
-                </svg>
-                {% trans "Office Entry" %}
-            </a>
-            <a href="{% url 'collector_office_synop' %}" class="button button-small button--icon">
-                <svg class="icon icon-doc-full w-mr-1" aria-hidden="true">
-                    <use href="#icon-doc-full"></use>
-                </svg>
-                {% trans "SYNOP Entry" %}
-            </a>
+            {% if connection.enable_office_entry %}
+                <a href="{% url 'collector_office_entry' %}?connection={{ connection.pk }}"
+                   class="button button-small button--icon w-ml-4">
+                    <svg class="icon icon-edit w-mr-1" aria-hidden="true">
+                        <use href="#icon-edit"></use>
+                    </svg>
+                    {% trans "Office Entry" %}
+                </a>
+                <a href="{% url 'collector_office_synop' %}?connection={{ connection.pk }}"
+                   class="button button-small button--icon">
+                    <svg class="icon icon-doc-full w-mr-1" aria-hidden="true">
+                        <use href="#icon-doc-full"></use>
+                    </svg>
+                    {% trans "SYNOP Entry" %}
+                </a>
+            {% endif %}
         </div>
 
         {% if unprocessed_count %}
             <div class="w-field__errors w-mb-4">
-                <p class="error-message">
+                <div class="help-block help-warning">
+                    <svg class="icon icon-warning icon" aria-hidden="true">
+                        <use href="#icon-warning"></use>
+                    </svg>
+
                     {% blocktrans with n=unprocessed_count %}
-                        Warning: {{ n }} submission record(s) are unprocessed. Check the Celery worker.
+                        {{ n }} submission record(s) are unprocessed.
                     {% endblocktrans %}
-                </p>
+
+                    <form method="post" action="{% url 'collector_monitoring_reprocess' %}" class="w-mt-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="connection" value="{{ connection.pk }}">
+                        <input type="hidden" name="days" value="{{ period_days }}">
+
+                        <button type="submit" class="button button-small button--icon">
+                            {% trans "Trigger Collection" %}
+                        </button>
+
+                    </form>
+                </div>
+
             </div>
         {% endif %}
     </div>
 
     <!-- Station status table -->
     <div class="panel panel--nested w-mb-6">
-        <div class="panel__header">
+        <div class="panel__header panel-header-row">
             <h3 class="w-m-0">{% trans "Station Submission Status" %}</h3>
+            <a href="{% url 'collector_monitoring_stations' %}?connection={{ connection.pk }}"
+               class="button button-small button-secondary">{% trans "View All" %}</a>
         </div>
         <div class="panel__content">
             <table class="listing">
                 <thead>
                 <tr>
                     <th>{% trans "Station" %}</th>
-                    <th>{% trans "Connection" %}</th>
                     <th class="w-text-right">{% trans "Submissions" %}</th>
                     <th>{% trans "Last Submission" %}</th>
+                    <th>{% trans "Earliest Obs" %}</th>
+                    <th>{% trans "Latest Obs" %}</th>
+                    <th>{% trans "Start Date" %}</th>
                     <th>{% trans "Status" %}</th>
                 </tr>
                 </thead>
@@ -64,13 +101,40 @@
                 {% for sl in station_stats %}
                     <tr>
                         <td><strong>{{ sl.station.name }}</strong></td>
-                        <td class="muted">{{ sl.network_connection.name }}</td>
                         <td class="w-text-right">
                             <strong>{{ sl.submission_count }}</strong>
                         </td>
                         <td>
                             {% if sl.last_submission %}
                                 {{ sl.last_submission|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.earliest_obs %}
+                                {% if sl.has_data_before_start %}
+                                    <span class="status-tag status-tag--warning"
+                                          title="{% trans 'Data before configured start date' %}">
+                                        ⚠ {{ sl.earliest_obs|date:"Y-m-d H:i" }} UTC
+                                    </span>
+                                {% else %}
+                                    {{ sl.earliest_obs|date:"Y-m-d H:i" }} UTC
+                                {% endif %}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.latest_obs %}
+                                {{ sl.latest_obs|date:"Y-m-d H:i" }} UTC
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sl.start_date %}
+                                {{ sl.start_date|date:"Y-m-d" }}
                             {% else %}
                                 <span class="muted">—</span>
                             {% endif %}
@@ -87,7 +151,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5">
+                        <td colspan="7">
                             <em class="muted">{% trans "No station links configured." %}</em>
                         </td>
                     </tr>
@@ -99,8 +163,10 @@
 
     <!-- Observer activity -->
     <div class="panel panel--nested w-mb-6">
-        <div class="panel__header">
+        <div class="panel__header panel-header-row">
             <h3 class="w-m-0">{% trans "Observer Activity" %}</h3>
+            <a href="{% url 'collector_monitoring_observers' %}?connection={{ connection.pk }}"
+               class="button button-small button-secondary">{% trans "View All" %}</a>
         </div>
         <div class="panel__content">
             <table class="listing">
@@ -140,8 +206,10 @@
 
     <!-- Recent submissions feed -->
     <div class="panel panel--nested w-mb-6">
-        <div class="panel__header">
+        <div class="panel__header panel-header-row">
             <h3 class="w-m-0">{% trans "Recent Submissions" %}</h3>
+            <a href="{% url 'collector_monitoring_submissions' %}?connection={{ connection.pk }}"
+               class="button button-small button-secondary">{% trans "View All" %}</a>
         </div>
         <div class="panel__content">
             <table class="listing small">
@@ -192,68 +260,68 @@
         </div>
     </div>
 
-    <!-- SYNOP archive -->
-    <div class="panel panel--nested w-mb-6">
-        <div class="panel__header">
-            <h3 class="w-m-0">{% trans "SYNOP Message Archive" %}</h3>
-        </div>
-        <div class="panel__content">
-            <table class="listing small">
-                <thead>
-                <tr>
-                    <th>#</th>
-                    <th>{% trans "Station" %}</th>
-                    <th>{% trans "Submitted By" %}</th>
-                    <th>{% trans "Obs Time" %}</th>
-                    <th>{% trans "Received" %}</th>
-                    <th>{% trans "Ingested" %}</th>
-                    <th>{% trans "Raw Message" %}</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for msg in synop_messages %}
+    <!-- SYNOP archive (only when office entry is enabled) -->
+    {% if synop_messages is not None %}
+        <div class="panel panel--nested w-mb-6">
+            <div class="panel__header panel-header-row">
+                <h3 class="w-m-0">{% trans "SYNOP Message Archive" %}</h3>
+                <a href="{% url 'collector_monitoring_synop' %}?connection={{ connection.pk }}"
+                   class="button button-small button-secondary">{% trans "View All" %}</a>
+            </div>
+            <div class="panel__content">
+                <table class="listing small">
+                    <thead>
                     <tr>
-                        <td>{{ msg.id }}</td>
-                        <td>{{ msg.station_link.station.name }}</td>
-                        <td>
-                            {% if msg.submitted_by %}
-                                {{ msg.submitted_by.get_full_name|default:msg.submitted_by.username }}
-                            {% else %}
-                                <span class="muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if msg.observation_time %}
-                                {{ msg.observation_time|date:"Y-m-d H:i" }} UTC
-                            {% else %}
-                                <span class="muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ msg.received_at|date:"Y-m-d H:i" }} UTC</td>
-                        <td>
-                            {% if msg.submission %}
-                                <span class="status-tag status-tag--primary">
-                                #{{ msg.submission.id }}
-                            </span>
-                            {% else %}
-                                <span class="status-tag status-tag--critical">{% trans "No" %}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <code class="code-raw">
-                                {{ msg.raw_message|truncatechars:80 }}
-                            </code>
-                        </td>
+                        <th>#</th>
+                        <th>{% trans "Station" %}</th>
+                        <th>{% trans "Submitted By" %}</th>
+                        <th>{% trans "Obs Time" %}</th>
+                        <th>{% trans "Received" %}</th>
+                        <th>{% trans "Ingested" %}</th>
+                        <th>{% trans "Raw Message" %}</th>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7">
-                            <em class="muted">{% trans "No SYNOP messages in this period." %}</em>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                    {% for msg in synop_messages %}
+                        <tr>
+                            <td>{{ msg.id }}</td>
+                            <td>{{ msg.station_link.station.name }}</td>
+                            <td>
+                                {% if msg.submitted_by %}
+                                    {{ msg.submitted_by.get_full_name|default:msg.submitted_by.username }}
+                                {% else %}
+                                    <span class="muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if msg.observation_time %}
+                                    {{ msg.observation_time|date:"Y-m-d H:i" }} UTC
+                                {% else %}
+                                    <span class="muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ msg.received_at|date:"Y-m-d H:i" }} UTC</td>
+                            <td>
+                                {% if msg.submission %}
+                                    <span class="status-tag status-tag--primary">#{{ msg.submission.id }}</span>
+                                {% else %}
+                                    <span class="status-tag status-tag--critical">{% trans "No" %}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code class="code-raw">{{ msg.raw_message|truncatechars:80 }}</code>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7">
+                                <em class="muted">{% trans "No SYNOP messages in this period." %}</em>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    {% endif %}
 {% endblock %}
