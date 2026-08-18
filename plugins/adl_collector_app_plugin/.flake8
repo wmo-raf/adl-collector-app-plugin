@@ -1,8 +1,10 @@
 [flake8]
-extend-ignore = E203, W503, F541, E501
-max-doc-length = 88
+# W293: blank lines carry the block's indentation throughout this repo (and
+# core's own source). Stripping 195 of them across 20 files would be a
+# whitespace-only commit wrecking blame ahead of every real change.
+extend-ignore = E203, W503, F541, E501, W293
 per-file-ignores =
-    tests/*: F841
+    src/*/tests/*: F841
 exclude =
     .git,
     __pycache__,

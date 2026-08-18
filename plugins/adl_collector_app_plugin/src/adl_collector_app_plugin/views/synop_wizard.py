@@ -386,8 +386,8 @@ class SynopSetupWizardView(View):
         proposed = [
             m for m in mappings
             if m.get("action") == "use_existing"
-               and m.get("adl_parameter_id")
-               and m.get("unit_id")
+            and m.get("adl_parameter_id")
+            and m.get("unit_id")
         ]
         
         param_to_paths: dict = {}

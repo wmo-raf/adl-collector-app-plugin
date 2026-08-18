@@ -29,6 +29,7 @@ def _from_pymetdecoder(table_id: str) -> list[tuple[int, str]]:
         pass
     return []
 
+
 # Table 2700 — Cloud amount in oktas (N, Nh)
 WMO_TABLE_2700 = [
     (0, "0 — Clear (0 oktas)"),
