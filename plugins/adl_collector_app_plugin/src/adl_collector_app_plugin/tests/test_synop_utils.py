@@ -1,5 +1,3 @@
-import pytest
-
 from adl_collector_app_plugin.synop_utils import extract_value_by_path, FM12_ELEMENT_PATH_CHOICES
 
 
