@@ -9,6 +9,16 @@ class ManualObservationConnection(NetworkConnection):
     """
     Model representing a connection for manual observations.
     """
+    # No host to dial, no credential we hold, nothing to be addressable:
+    # observations are submitted to ADL directly — through the office entry
+    # form, the SYNOP wizard or the field-observer PWA — and "ingestion" is a
+    # local sweep of the CollectorSubmissionRecord rows that landed. Core
+    # reads this to report layers 4 and 5 of the ingestion diagnostic as not
+    # applicable; without it, every successful sweep fabricates an OK for
+    # both, halting the ladder before layer 6, where observer silence — the
+    # only fault this archetype actually has — is reported.
+    has_external_source = False
+    
     station_link_model_string_label = "adl_collector_app_plugin.ManualObservationStationLink"
     
     enable_office_entry = models.BooleanField(
