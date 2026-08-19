@@ -22,10 +22,13 @@ class ManualObservationStationLink(StationLink):
         blank=True,
         null=True,
         validators=[validate_start_date],
-        verbose_name=_("Initial Collection start date"),
+        verbose_name=_("Collection Start Date"),
         help_text=_(
-            "The date to start collection data for the first collection. "
-            "Ignored if any data has been collected already for this station"),
+            "Collection never starts before this date. On the first run it is "
+            "the start of the backfill; afterwards, moving it forward past the "
+            "latest saved record skips the gap. Leave empty to start from the "
+            "last hour."
+        ),
     )
     
     schedule = StreamField(
