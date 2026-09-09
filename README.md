@@ -1,92 +1,58 @@
 # ADL Collector App Plugin
 
-ADL plugin for manual mobile collector app
+Brings **manually observed** data into an [ADL](https://github.com/wmo-raf/adl)
+instance. Nothing is fetched from a source: observations are typed into ADL —
+by office staff on a **Direct Data Entry** form or by pasting a **SYNOP
+FM-12** message, and by field observers in a small **progressive web app** on
+a phone, which queues submissions while offline. A scheduled sweep turns the
+stored submissions into observation records.
 
-## Getting started
+One connection groups the manned stations; one station link per station holds
+its parameter mappings, its observers and its reporting schedule (fixed
+synoptic slots, or a window with a cut-off).
 
-### Prerequisites
+**Operator guide:** [docs/guide.md](docs/guide.md) — prerequisites, every
+connection and station-link field, the schedule blocks, office entry, the
+SYNOP wizard and archive, the field app, the monitoring dashboard,
+diagnostics and troubleshooting. The guide is also published on the central
+ADL documentation site.
 
-- Docker and Docker Compose installed on your machine.
-- Git installed on your machine.
+## Known defects in 0.2.1
 
-### Install and build the ADL Core Image
+Both are documented in the guide and are worth knowing before deploying:
 
-The ADL Collector App Plugin is a module intended to be installed in an [ADL](https://github.com/wmo-raf/adl)
-instance. This means that you need to first get the core ADL system and build it on your local development environment.
+- **SYNOP decoding does not work** — `pymetdecoder` is declared in
+  `requirements/base.in`, but the compiled `base.txt` the package installs
+  from was built empty ([#14](https://github.com/wmo-raf/adl-collector-app-plugin/issues/14)).
+- **Field observers cannot submit** — the app sends its token with the
+  `Token` scheme, which ADL core does not accept
+  ([#11](https://github.com/wmo-raf/adl-collector-app-plugin/issues/11)).
 
-You can follow the instructions on the [ADL core repository](https://github.com/wmo-raf/adl) to install and build the
-ADL core image
+Office direct entry is unaffected by both.
 
-### Install ADL Collector App Plugin
+## Development setup
 
-The `dev.Dockerfile` file uses the `adl` image as a base image. The `ADL Collector App Plugin` is
-installed during the build process. Using docker mounted volumes, the plugin is editable such that any changes made to
-the code trigger Django to reload the development server, allowing you to see the changes as you develop
-
-1. Clone the plugin repository:
+The plugin runs inside the ADL core image. Build the `adl:latest` image from
+the [ADL core repository](https://github.com/wmo-raf/adl) first, then:
 
 ```bash
 git clone https://github.com/wmo-raf/adl-collector-app-plugin.git
 cd adl-collector-app-plugin
-```
-
-2. Create a `.env` file using the provided `.env.sample` file:
-
-```bash
-cp .env.sample .env
-```
-
-3. Edit the `.env` file to set the required environment variables
-
-```bash
-nano .env
-```
-
-You can use the default values provided in the `.env.sample` file, but be sure to set the following correctly:
-
-- `PLUGIN_BUILD_UID`: The UID of the user that will run the plugin inside the container
-- `PLUGIN_BUILD_GID`: The GID of the user that will run the plugin inside the container
-
-You can find the UID and GID of your user by running the following command:
-
-```bash
-id -u
-id -g
-```
-
-4. Build the plugin image:
-
-```bash
+cp .env.sample .env        # set PLUGIN_BUILD_UID=$(id -u), PLUGIN_BUILD_GID=$(id -g), ADL_DB_PASSWORD
 docker compose build
-```
-
-If you are getting errors like
-`failed to solve: adl:latest: failed to resolve source metadata for docker.io/library/adl:latest: pull access denied`,
-you might need to disable `DOCKER_BUILDKIT` when building the image.
-
-You can do this by running the following
-
-```bash
-DOCKER_BUILDKIT=0  docker compose build
-```
-
-5. Start the plugin:
-
-```bash
 docker compose up
-```
-
-If everything is set up correctly, you should see the plugin starting up and listening for incoming requests. You can
-access the plugin at `http://localhost:8000`. The port number can be changed using the `PORT` environment variable in
-the `.env`. The default port is `8000`.
-
-6. Create superuser
-
-```bash
 docker compose exec adl adl createsuperuser
 ```
 
-The `adl`command is shorthand for `python manage.py` command. You can use it to run any Django management command
-inside the container.
+The admin is served on `PORT` (default 8080). The plugin source is
+bind-mounted, so code changes reload the dev server. The field app is a Vue
+build under `src/adl_collector_app_plugin/vue-pwa/`; its compiled bundle is
+committed, so a change there needs a rebuild to take effect. If the image
+build fails with `pull access denied` for `adl:latest`, prefix it with
+`DOCKER_BUILDKIT=0`.
 
-
+Tests are Django-runner tests under
+`plugins/adl_collector_app_plugin/src/adl_collector_app_plugin/tests/`. Lint
+and format from `plugins/adl_collector_app_plugin/` with `make lint` and
+`make format`. See [CONTRIBUTING.md](CONTRIBUTING.md) — a change to any
+connection or station-link field must update the guide in the same PR.
