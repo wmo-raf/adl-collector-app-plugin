@@ -1,0 +1,128 @@
+{
+  "capture": {
+    "connection": "Demo Manual Observations",
+    "ingest": true,
+    "probe": false,
+    "station_checks": [],
+    "wait": 240,
+    "present_interval": 15
+  },
+  "connection": {
+    "model": "adl_collector_app_plugin.ManualObservationConnection",
+    "fields": {
+      "name": "Demo Manual Observations",
+      "plugin": "adl_collector_app_plugin",
+      "stations_timezone": "Africa/Nairobi",
+      "plugin_processing_interval": 1,
+      "enable_office_entry": true,
+      "enable_field_app": true
+    }
+  },
+  "station_links": [
+    {
+      "model": "adl_collector_app_plugin.ManualObservationStationLink",
+      "station": "DEMO001",
+      "fields": {
+        "start_date": "$NOW-2d"
+      },
+      "children": {
+        "variable_mappings": [
+          {
+            "adl_parameter": "Air Temperature",
+            "obs_parameter_unit": "degC",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Relative Humidity",
+            "obs_parameter_unit": "percent",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Atmospheric Pressure",
+            "obs_parameter_unit": "hPa",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Precipitation",
+            "obs_parameter_unit": "mm",
+            "is_rainfall": true,
+            "show_in_direct_entry": true
+          }
+        ]
+      }
+    },
+    {
+      "model": "adl_collector_app_plugin.ManualObservationStationLink",
+      "station": "DEMO002",
+      "fields": {
+        "start_date": "$NOW-2d"
+      },
+      "children": {
+        "variable_mappings": [
+          {
+            "adl_parameter": "Air Temperature",
+            "obs_parameter_unit": "degC",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Relative Humidity",
+            "obs_parameter_unit": "percent",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Atmospheric Pressure",
+            "obs_parameter_unit": "hPa",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Precipitation",
+            "obs_parameter_unit": "mm",
+            "is_rainfall": true,
+            "show_in_direct_entry": true
+          }
+        ]
+      }
+    },
+    {
+      "model": "adl_collector_app_plugin.ManualObservationStationLink",
+      "station": "DEMO003",
+      "fields": {
+        "start_date": "$NOW-2d"
+      },
+      "children": {
+        "variable_mappings": [
+          {
+            "adl_parameter": "Air Temperature",
+            "obs_parameter_unit": "degC",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Relative Humidity",
+            "obs_parameter_unit": "percent",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Atmospheric Pressure",
+            "obs_parameter_unit": "hPa",
+            "is_rainfall": false,
+            "show_in_direct_entry": true
+          },
+          {
+            "adl_parameter": "Precipitation",
+            "obs_parameter_unit": "mm",
+            "is_rainfall": true,
+            "show_in_direct_entry": true
+          }
+        ]
+      }
+    }
+  ]
+}

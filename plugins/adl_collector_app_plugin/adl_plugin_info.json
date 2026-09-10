@@ -1,9 +1,9 @@
 {
   "name": "ADL Collector App Plugin",
-  "description": "ADL plugin for manual mobile collector app",
-  "author": "TODO",
-  "author_url": "TODO",
-  "url": "TODO",
-  "license": "TODO",
-  "contact": "TODO"
+  "description": "ADL plugin for manually observed data: office entry, SYNOP FM-12 decoding and a field observer app",
+  "author": "WMO RAF",
+  "author_url": "https://github.com/wmo-raf",
+  "url": "https://github.com/wmo-raf/adl-collector-app-plugin",
+  "license": "MIT",
+  "contact": "eotenyo@wmo.int"
 }

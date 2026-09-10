@@ -1,0 +1,157 @@
+# Screenshot manifest for the ADL Collector App Plugin guide (docs/guide.md).
+# Regenerate from the adl repo:  scripts/capture-plugin-docs.sh ../adl-plugins/adl-collector-app-plugin
+# Fixture (execution pass): one Manual Observation Connection (id 1) with both switches on,
+# three station links (ids 1-3, stations with WSI local ids 60680/60681/60682, two observers,
+# mappings for Air Temperature / RH / Precipitation / cloud cover (coded 2700)), the SYNOP
+# wizard run once, several office and SYNOP submissions for today, one ingestion sweep
+# completed. The field-app shot needs a logged-in observer session in the capture browser
+# (the app has its own login; the runner's admin auth state also satisfies it). Field-app
+# URL is served under /plugins/. Selectors are blind guesses — fix against the live pages.
+
+defaults:
+  viewport:
+  - 1440
+  - 900
+  padding: 12
+screenshots:
+- name: collector_connection_form
+  url: /manualobservationconnection/edit/1/
+  callouts:
+  - badge:
+      target: '#id_enable_office_entry'
+      n: 1
+  - badge:
+      target: '#id_enable_field_app'
+      n: 2
+  capture:
+    selector: "#w-editor-form"
+- name: collector_station_link_form
+  url: /manualobservationstationlink/edit/1/
+  callouts:
+  - badge:
+      target: '#id_start_date'
+      n: 1
+  - badge:
+      target: '#panel-variable_mappings-section'
+      n: 2
+  - badge:
+      target: '#panel-observers-section'
+      n: 3
+  - badge:
+      target: '#panel-schedule-section'
+      n: 4
+  capture:
+    # No cap: the badges mark the Variable Mappings, Observers and Schedule
+    # panels, which sit below any workable cap — the runner refuses a cap that
+    # would cut a numbered badge, and rightly so.
+    selector: "#w-editor-form"
+- name: collector_connection_row_actions
+  url: /connections/
+  setup:
+  - click: 'tr:has(a[href="/manualobservationconnection/edit/1/"]) .w-dropdown__toggle'
+  - wait_for: 'a[href*="adl-collector-app-plugin/connections/1/"]'
+  capture:
+    selector: main
+    max_height: 800
+- name: collector_connection_overview
+  url: /adl-collector-app-plugin/connections/1/
+  callouts:
+  - badge:
+      target: '.co-card-grid'
+      n: 1
+  - badge:
+      target: '.co-info-card-grid'
+      n: 2
+  - badge:
+      # querySelector has no :nth-match(); "a .co-section preceded by one"
+      # resolves to the second, which is what this marks.
+      target: '.co-section ~ .co-section'
+      n: 3
+  capture:
+    selector: main
+    max_height: 1400
+- name: collector_station_detail
+  url: /adl-collector-app-plugin/connections/1/stations/1/
+  capture:
+    selector: main
+    max_height: 900
+- name: collector_office_entry
+  url: /adl-collector-app-plugin/office/?connection=1&station_link_id=1
+  callouts:
+  - badge:
+      target: '#station-select'
+      n: 1
+  - badge:
+      target: '#obs-time'
+      n: 2
+  - badge:
+      target: 'table.listing'
+      n: 3
+  - badge:
+      target: 'button[type="submit"].button-primary'
+      n: 4
+  capture:
+    selector: main
+    max_height: 1200
+- name: collector_synop_preview
+  # The SYNOP form, not the decode preview the guide describes.
+  #
+  # Decoding does not work in 0.2.1: pymetdecoder is declared in
+  # requirements/base.in but requirements/base.txt — which setup.py actually
+  # installs from — was compiled empty, so the package is absent and the form
+  # answers "pymetdecoder is not installed". See
+  # wmo-raf/adl-collector-app-plugin#14. Capturing the error state would
+  # document a broken build as if it were the product; capturing the form an
+  # operator fills in is true either way.
+  #
+  # When the dependency is fixed, restore the fill/select/click steps below
+  # and wait for .synop-decode-header.
+  url: /adl-collector-app-plugin/office/synop/?connection=1
+  setup:
+  - fill: { selector: '#id_raw_message', value: 'AAXX 19061 60680 22560 60408 10220 20180 30124 40126 52011 60011 70200 8352/=' }
+  - select: { selector: '#id_observation_year', value: '2026' }
+  - select: { selector: '#id_observation_month', value: '8' }
+  callouts:
+  - badge:
+      target: '#id_raw_message'
+      n: 1
+  - badge:
+      target: '#id_observation_year'
+      n: 2
+  capture:
+    selector: main
+- name: collector_synop_wizard
+  url: /adl-collector-app-plugin/synop-setup/?step=2
+  setup:
+  - wait_for: '#param-form'
+  capture:
+    selector: main
+    max_height: 1400
+- name: collector_monitoring_dashboard
+  url: /adl-collector-app-plugin/monitoring/?connection=1&days=7
+  capture:
+    selector: main
+    max_height: 1800
+- name: collector_field_app
+  # The sign-in screen, not the value-entry screen the guide describes.
+  #
+  # With release 0.2.1 the entry screen cannot be reached at all: the app
+  # sends its JWT as "Authorization: Token", which core accepts from no
+  # authentication class, so a real observer's session gets 403 from
+  # /plugins/api/adl-collector/station-link/ — and a browser that also holds
+  # an admin cookie authenticates as *admin*, who is nobody's observer, so
+  # the app renders "No stations assigned to you". Both were reproduced
+  # against this stack; see wmo-raf/adl-collector-app-plugin#11.
+  #
+  # Capturing either of those would document a broken state as if it were
+  # the product. When the defect is fixed, point this back at
+  # #/stations/1/observe, wait for #obs-date, and drop the note in the guide.
+  url: /plugins/adl-collector-app-plugin/field-app/
+  setup:
+  - wait_for: '#adl-pwa form input[type=password]'
+  capture:
+    selector: '#adl-pwa'
+- name: collector_ingestion_diagnostic
+  url: /monitoring/connection/1/health/
+  capture:
+    selector: .health-diagnostic
